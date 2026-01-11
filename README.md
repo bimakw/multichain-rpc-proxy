@@ -1,5 +1,10 @@
 # Multichain RPC Proxy
 
+[![Go Version](https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat&logo=go)](https://go.dev/)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Test Coverage](https://img.shields.io/badge/coverage-79%25-green.svg)](https://github.com/bimakw/multichain-rpc-proxy)
+[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=flat&logo=docker)](https://hub.docker.com/)
+
 A high-performance, multi-chain RPC load balancer and proxy written in Go. Designed for blockchain infrastructure reliability with automatic health checking, failover, and comprehensive observability.
 
 ## Features
@@ -9,10 +14,19 @@ A high-performance, multi-chain RPC load balancer and proxy written in Go. Desig
 - **Health Monitoring**: Continuous endpoint health checks with block height validation
 - **Automatic Failover**: Seamless switching when endpoints become unhealthy
 - **Block Lag Detection**: Mark endpoints unhealthy if they fall behind
+- **Circuit Breaker**: Fault tolerance pattern to prevent cascade failures
+- **WebSocket Support**: Full support for `eth_subscribe` and other subscription methods
 - **Prometheus Metrics**: Full observability with custom blockchain metrics
 - **Response Caching**: Cache static RPC calls (eth_chainId, net_version, etc.)
 - **Rate Limiting**: Token bucket algorithm with per-IP limiting
 - **Docker Ready**: Production-ready containerization with Compose stack
+
+## Documentation
+
+- [Architecture](docs/ARCHITECTURE.md) - System design and components
+- [Configuration](docs/CONFIGURATION.md) - Full configuration reference
+- [API Reference](docs/API.md) - HTTP endpoints and usage examples
+- [Changelog](CHANGELOG.md) - Version history and release notes
 
 ## Quick Start
 

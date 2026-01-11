@@ -40,6 +40,12 @@ chains:
       interval: 10s
       timeout: 5s
       max_block_lag: 10
+    circuit_breaker:
+      enabled: true
+      failure_threshold: 5
+      success_threshold: 2
+      timeout: 30s
+      half_open_max_requests: 3
 
   arbitrum:
     chain_id: 42161

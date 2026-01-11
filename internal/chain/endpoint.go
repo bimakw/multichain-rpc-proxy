@@ -14,17 +14,18 @@ import (
 
 // Endpoint represents a single RPC endpoint
 type Endpoint struct {
-	URL         string
-	Weight      int
-	healthy     atomic.Bool
-	blockHeight atomic.Int64
-	latency     atomic.Int64 // in microseconds
-	totalReqs   atomic.Int64
-	failedReqs  atomic.Int64
-	mu          sync.RWMutex
-	lastError   error
-	lastChecked time.Time
-	client      *http.Client
+	URL            string
+	Weight         int
+	healthy        atomic.Bool
+	blockHeight    atomic.Int64
+	latency        atomic.Int64 // in microseconds
+	totalReqs      atomic.Int64
+	failedReqs     atomic.Int64
+	mu             sync.RWMutex
+	lastError      error
+	lastChecked    time.Time
+	client         *http.Client
+	circuitBreaker *CircuitBreaker
 }
 
 // NewEndpoint creates a new endpoint
@@ -43,6 +44,30 @@ func NewEndpoint(url string, weight int, timeout time.Duration) *Endpoint {
 	}
 	e.healthy.Store(true) // assume healthy initially
 	return e
+}
+
+// NewEndpointWithCircuitBreaker creates a new endpoint with circuit breaker
+func NewEndpointWithCircuitBreaker(url string, weight int, timeout time.Duration, cbConfig CircuitBreakerConfig) *Endpoint {
+	e := NewEndpoint(url, weight, timeout)
+	e.circuitBreaker = NewCircuitBreaker(cbConfig)
+	return e
+}
+
+// CircuitBreakerState returns the current circuit breaker state, or empty if no circuit breaker
+func (e *Endpoint) CircuitBreakerState() string {
+	if e.circuitBreaker == nil {
+		return ""
+	}
+	return e.circuitBreaker.State().String()
+}
+
+// CircuitBreakerStats returns circuit breaker stats, or nil if no circuit breaker
+func (e *Endpoint) CircuitBreakerStats() *CircuitBreakerStats {
+	if e.circuitBreaker == nil {
+		return nil
+	}
+	stats := e.circuitBreaker.Stats()
+	return &stats
 }
 
 // IsHealthy returns whether the endpoint is healthy
@@ -180,11 +205,19 @@ func (e *Endpoint) Call(ctx context.Context, req *RPCRequest) (*RPCResponse, err
 
 // Forward forwards a raw request body to the endpoint and returns the raw response
 func (e *Endpoint) Forward(ctx context.Context, body []byte) ([]byte, error) {
+	// Check circuit breaker if configured
+	if e.circuitBreaker != nil {
+		if !e.circuitBreaker.Allow() {
+			return nil, ErrCircuitOpen
+		}
+	}
+
 	e.totalReqs.Add(1)
 
 	httpReq, err := http.NewRequestWithContext(ctx, "POST", e.URL, bytes.NewReader(body))
 	if err != nil {
 		e.failedReqs.Add(1)
+		e.recordCircuitBreakerFailure()
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
@@ -201,6 +234,7 @@ func (e *Endpoint) Forward(ctx context.Context, body []byte) ([]byte, error) {
 		e.mu.Lock()
 		e.lastError = err
 		e.mu.Unlock()
+		e.recordCircuitBreakerFailure()
 		return nil, fmt.Errorf("request failed: %w", err)
 	}
 	defer resp.Body.Close()
@@ -208,14 +242,32 @@ func (e *Endpoint) Forward(ctx context.Context, body []byte) ([]byte, error) {
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		e.failedReqs.Add(1)
+		e.recordCircuitBreakerFailure()
 		return nil, fmt.Errorf("failed to read response: %w", err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
 		e.failedReqs.Add(1)
 		// Still return the body as it may contain error details
+		// Don't record as circuit breaker failure for 4xx/5xx - these are valid responses
+		e.recordCircuitBreakerSuccess()
 		return respBody, nil
 	}
 
+	e.recordCircuitBreakerSuccess()
 	return respBody, nil
+}
+
+// recordCircuitBreakerSuccess records a success if circuit breaker is configured
+func (e *Endpoint) recordCircuitBreakerSuccess() {
+	if e.circuitBreaker != nil {
+		e.circuitBreaker.RecordSuccess()
+	}
+}
+
+// recordCircuitBreakerFailure records a failure if circuit breaker is configured
+func (e *Endpoint) recordCircuitBreakerFailure() {
+	if e.circuitBreaker != nil {
+		e.circuitBreaker.RecordFailure()
+	}
 }

@@ -27,7 +27,31 @@ func NewChain(name string, cfg *config.ChainConfig) *Chain {
 	endpoints := make([]*Endpoint, 0, len(cfg.Endpoints))
 
 	for _, epCfg := range cfg.Endpoints {
-		ep := NewEndpoint(epCfg.URL, epCfg.Weight, cfg.HealthCheck.Timeout)
+		var ep *Endpoint
+		if cfg.CircuitBreaker.Enabled {
+			cbConfig := CircuitBreakerConfig{
+				FailureThreshold:    cfg.CircuitBreaker.FailureThreshold,
+				SuccessThreshold:    cfg.CircuitBreaker.SuccessThreshold,
+				Timeout:             cfg.CircuitBreaker.Timeout,
+				HalfOpenMaxRequests: cfg.CircuitBreaker.HalfOpenMaxRequests,
+			}
+			// Apply defaults if not set
+			if cbConfig.FailureThreshold == 0 {
+				cbConfig.FailureThreshold = 5
+			}
+			if cbConfig.SuccessThreshold == 0 {
+				cbConfig.SuccessThreshold = 2
+			}
+			if cbConfig.Timeout == 0 {
+				cbConfig.Timeout = 30 * time.Second
+			}
+			if cbConfig.HalfOpenMaxRequests == 0 {
+				cbConfig.HalfOpenMaxRequests = 3
+			}
+			ep = NewEndpointWithCircuitBreaker(epCfg.URL, epCfg.Weight, cfg.HealthCheck.Timeout, cbConfig)
+		} else {
+			ep = NewEndpoint(epCfg.URL, epCfg.Weight, cfg.HealthCheck.Timeout)
+		}
 		endpoints = append(endpoints, ep)
 	}
 

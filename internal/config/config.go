@@ -46,9 +46,10 @@ type CacheConfig struct {
 }
 
 type ChainConfig struct {
-	ChainID     int               `yaml:"chain_id"`
-	Endpoints   []EndpointConfig  `yaml:"endpoints"`
-	HealthCheck HealthCheckConfig `yaml:"health_check"`
+	ChainID        int                  `yaml:"chain_id"`
+	Endpoints      []EndpointConfig     `yaml:"endpoints"`
+	HealthCheck    HealthCheckConfig    `yaml:"health_check"`
+	CircuitBreaker CircuitBreakerConfig `yaml:"circuit_breaker"`
 }
 
 type EndpointConfig struct {
@@ -60,6 +61,14 @@ type HealthCheckConfig struct {
 	Interval    time.Duration `yaml:"interval"`
 	Timeout     time.Duration `yaml:"timeout"`
 	MaxBlockLag int           `yaml:"max_block_lag"`
+}
+
+type CircuitBreakerConfig struct {
+	Enabled             bool          `yaml:"enabled"`
+	FailureThreshold    int           `yaml:"failure_threshold"`
+	SuccessThreshold    int           `yaml:"success_threshold"`
+	Timeout             time.Duration `yaml:"timeout"`
+	HalfOpenMaxRequests int           `yaml:"half_open_max_requests"`
 }
 
 func Load(path string) (*Config, error) {
