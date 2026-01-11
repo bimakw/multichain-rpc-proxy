@@ -1,0 +1,90 @@
+server:
+  port: 8080
+  read_timeout: 30s
+  write_timeout: 30s
+
+redis:
+  addr: "localhost:6379"
+  password: ""
+  db: 0
+
+metrics:
+  enabled: true
+  port: 9090
+
+rate_limit:
+  enabled: true
+  requests_per_second: 100
+  burst: 200
+
+cache:
+  enabled: true
+  ttl: 60s
+  # Methods that return static data (safe to cache)
+  cacheable_methods:
+    - eth_chainId
+    - net_version
+    - web3_clientVersion
+
+chains:
+  ethereum:
+    chain_id: 1
+    endpoints:
+      - url: "https://eth.llamarpc.com"
+        weight: 10
+      - url: "https://rpc.ankr.com/eth"
+        weight: 5
+      - url: "https://ethereum.publicnode.com"
+        weight: 5
+    health_check:
+      interval: 10s
+      timeout: 5s
+      max_block_lag: 10
+
+  arbitrum:
+    chain_id: 42161
+    endpoints:
+      - url: "https://arb1.arbitrum.io/rpc"
+        weight: 10
+      - url: "https://rpc.ankr.com/arbitrum"
+        weight: 5
+    health_check:
+      interval: 10s
+      timeout: 5s
+      max_block_lag: 50
+
+  optimism:
+    chain_id: 10
+    endpoints:
+      - url: "https://mainnet.optimism.io"
+        weight: 10
+      - url: "https://rpc.ankr.com/optimism"
+        weight: 5
+    health_check:
+      interval: 10s
+      timeout: 5s
+      max_block_lag: 50
+
+  base:
+    chain_id: 8453
+    endpoints:
+      - url: "https://mainnet.base.org"
+        weight: 10
+      - url: "https://base.llamarpc.com"
+        weight: 5
+    health_check:
+      interval: 10s
+      timeout: 5s
+      max_block_lag: 50
+
+  polygon:
+    chain_id: 137
+    endpoints:
+      - url: "https://polygon-rpc.com"
+        weight: 10
+      - url: "https://rpc.ankr.com/polygon"
+        weight: 5
+    health_check:
+      interval: 10s
+      timeout: 5s
+      max_block_lag: 100
