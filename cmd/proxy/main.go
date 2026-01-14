@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"log"
@@ -18,7 +19,9 @@ import (
 	"github.com/bimakw/multichain-rpc-proxy/internal/cache"
 	"github.com/bimakw/multichain-rpc-proxy/internal/chain"
 	"github.com/bimakw/multichain-rpc-proxy/internal/config"
+	grpcserver "github.com/bimakw/multichain-rpc-proxy/internal/grpc"
 	"github.com/bimakw/multichain-rpc-proxy/internal/proxy"
+	tlsutil "github.com/bimakw/multichain-rpc-proxy/internal/tls"
 )
 
 func main() {
@@ -34,8 +37,22 @@ func main() {
 	log.Printf("Starting multichain-rpc-proxy")
 	log.Printf("Loaded %d chains", len(cfg.Chains))
 
-	// Initialize chain manager
-	manager := chain.NewManager(cfg.Chains)
+	// Initialize TLS config for backend connections
+	var clientTLSConfig *tls.Config
+	if cfg.Server.TLS.ClientTLS.Enabled {
+		var err error
+		clientTLSConfig, err = tlsutil.NewClientTLSConfig(cfg.Server.TLS.ClientTLS)
+		if err != nil {
+			log.Fatalf("Failed to create client TLS config: %v", err)
+		}
+		log.Printf("Client TLS enabled for backend connections")
+	}
+
+	// Initialize chain manager with TLS
+	manager := chain.NewManagerWithOptions(chain.ManagerOptions{
+		Chains:    cfg.Chains,
+		TLSConfig: clientTLSConfig,
+	})
 	manager.Start()
 
 	// Initialize cache
@@ -101,12 +118,34 @@ func main() {
 		}()
 	}
 
+	// Start gRPC server if enabled
+	var grpcSrv *grpcserver.Server
+	if cfg.GRPC.Enabled {
+		var err error
+		grpcSrv, err = grpcserver.NewServer(cfg.GRPC, manager, memCache)
+		if err != nil {
+			log.Fatalf("Failed to create gRPC server: %v", err)
+		}
+
+		if err := grpcSrv.Start(); err != nil {
+			log.Fatalf("Failed to start gRPC server: %v", err)
+		}
+	}
+
 	// Start server
 	go func() {
 		addr := fmt.Sprintf(":%d", cfg.Server.Port)
-		log.Printf("Starting proxy server on %s", addr)
 
-		if err := app.Listen(addr); err != nil {
+		var err error
+		if cfg.Server.TLS.Enabled {
+			log.Printf("Starting HTTPS proxy server on %s", addr)
+			err = app.ListenTLS(addr, cfg.Server.TLS.CertFile, cfg.Server.TLS.KeyFile)
+		} else {
+			log.Printf("Starting HTTP proxy server on %s", addr)
+			err = app.Listen(addr)
+		}
+
+		if err != nil {
 			log.Fatalf("Server error: %v", err)
 		}
 	}()
@@ -124,6 +163,11 @@ func main() {
 
 	if err := app.ShutdownWithContext(ctx); err != nil {
 		log.Printf("Server shutdown error: %v", err)
+	}
+
+	// Stop gRPC server
+	if grpcSrv != nil {
+		grpcSrv.Stop()
 	}
 
 	// Stop chain manager

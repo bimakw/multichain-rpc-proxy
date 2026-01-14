@@ -9,6 +9,7 @@ import (
 
 type Config struct {
 	Server    ServerConfig            `yaml:"server"`
+	GRPC      GRPCConfig              `yaml:"grpc"`
 	Redis     RedisConfig             `yaml:"redis"`
 	Metrics   MetricsConfig           `yaml:"metrics"`
 	RateLimit RateLimitConfig         `yaml:"rate_limit"`
@@ -16,10 +17,35 @@ type Config struct {
 	Chains    map[string]*ChainConfig `yaml:"chains"`
 }
 
+// GRPCConfig holds gRPC server configuration
+type GRPCConfig struct {
+	Enabled bool      `yaml:"enabled"`
+	Port    int       `yaml:"port"`
+	TLS     TLSConfig `yaml:"tls"`
+}
+
 type ServerConfig struct {
 	Port         int           `yaml:"port"`
 	ReadTimeout  time.Duration `yaml:"read_timeout"`
 	WriteTimeout time.Duration `yaml:"write_timeout"`
+	TLS          TLSConfig     `yaml:"tls"`
+}
+
+// TLSConfig holds TLS/SSL configuration for the server
+type TLSConfig struct {
+	Enabled   bool            `yaml:"enabled"`
+	CertFile  string          `yaml:"cert_file"`
+	KeyFile   string          `yaml:"key_file"`
+	ClientTLS ClientTLSConfig `yaml:"client_tls"`
+}
+
+// ClientTLSConfig holds TLS configuration for backend connections
+type ClientTLSConfig struct {
+	Enabled            bool   `yaml:"enabled"`
+	InsecureSkipVerify bool   `yaml:"insecure_skip_verify"`
+	CAFile             string `yaml:"ca_file"`
+	CertFile           string `yaml:"cert_file"`
+	KeyFile            string `yaml:"key_file"`
 }
 
 type RedisConfig struct {
@@ -34,9 +60,11 @@ type MetricsConfig struct {
 }
 
 type RateLimitConfig struct {
-	Enabled           bool `yaml:"enabled"`
-	RequestsPerSecond int  `yaml:"requests_per_second"`
-	Burst             int  `yaml:"burst"`
+	Enabled           bool   `yaml:"enabled"`
+	RequestsPerSecond int    `yaml:"requests_per_second"`
+	Burst             int    `yaml:"burst"`
+	Strategy          string `yaml:"strategy"` // "token_bucket" or "sliding_window"
+	PerIP             bool   `yaml:"per_ip"`   // Rate limit per IP address
 }
 
 type CacheConfig struct {
@@ -50,6 +78,16 @@ type ChainConfig struct {
 	Endpoints      []EndpointConfig     `yaml:"endpoints"`
 	HealthCheck    HealthCheckConfig    `yaml:"health_check"`
 	CircuitBreaker CircuitBreakerConfig `yaml:"circuit_breaker"`
+	HTTPPool       HTTPPoolConfig       `yaml:"http_pool"`
+	RateLimit      *RateLimitConfig     `yaml:"rate_limit,omitempty"` // Per-chain rate limit (overrides global)
+}
+
+// HTTPPoolConfig holds HTTP connection pool configuration
+type HTTPPoolConfig struct {
+	MaxIdleConns        int           `yaml:"max_idle_conns"`
+	MaxIdleConnsPerHost int           `yaml:"max_idle_conns_per_host"`
+	MaxConnsPerHost     int           `yaml:"max_conns_per_host"`
+	IdleConnTimeout     time.Duration `yaml:"idle_conn_timeout"`
 }
 
 type EndpointConfig struct {
@@ -95,8 +133,24 @@ func Load(path string) (*Config, error) {
 	if cfg.Metrics.Port == 0 {
 		cfg.Metrics.Port = 9090
 	}
+	if cfg.GRPC.Port == 0 {
+		cfg.GRPC.Port = 9000
+	}
 	if cfg.Cache.TTL == 0 {
 		cfg.Cache.TTL = 60 * time.Second
+	}
+
+	// Set HTTP pool defaults for each chain
+	for _, chainCfg := range cfg.Chains {
+		if chainCfg.HTTPPool.MaxIdleConns == 0 {
+			chainCfg.HTTPPool.MaxIdleConns = 100
+		}
+		if chainCfg.HTTPPool.MaxIdleConnsPerHost == 0 {
+			chainCfg.HTTPPool.MaxIdleConnsPerHost = 100
+		}
+		if chainCfg.HTTPPool.IdleConnTimeout == 0 {
+			chainCfg.HTTPPool.IdleConnTimeout = 90 * time.Second
+		}
 	}
 
 	return &cfg, nil

@@ -2,6 +2,27 @@ server:
   port: 8080
   read_timeout: 30s
   write_timeout: 30s
+  # TLS configuration (optional)
+  tls:
+    enabled: false
+    # cert_file: "/path/to/server.crt"
+    # key_file: "/path/to/server.key"
+    # Client TLS for backend connections
+    client_tls:
+      enabled: false
+      # insecure_skip_verify: false  # Set true only for testing
+      # ca_file: "/path/to/ca.crt"   # Custom CA for backend verification
+      # cert_file: "/path/to/client.crt"  # mTLS client cert
+      # key_file: "/path/to/client.key"   # mTLS client key
+
+# gRPC server configuration (optional)
+grpc:
+  enabled: false
+  port: 9000
+  tls:
+    enabled: false
+    # cert_file: "/path/to/grpc.crt"
+    # key_file: "/path/to/grpc.key"
 
 redis:
   addr: "localhost:6379"
@@ -46,6 +67,12 @@ chains:
       success_threshold: 2
       timeout: 30s
       half_open_max_requests: 3
+    # HTTP connection pool configuration (optional, defaults shown)
+    http_pool:
+      max_idle_conns: 100
+      max_idle_conns_per_host: 100
+      # max_conns_per_host: 0  # 0 = unlimited
+      idle_conn_timeout: 90s
 
   arbitrum:
     chain_id: 42161

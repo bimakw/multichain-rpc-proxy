@@ -1,6 +1,6 @@
 # Multichain RPC Proxy
 
-[![Go Version](https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat&logo=go)](https://go.dev/)
+[![Go Version](https://img.shields.io/badge/Go-1.24+-00ADD8?style=flat&logo=go)](https://go.dev/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Test Coverage](https://img.shields.io/badge/coverage-79%25-green.svg)](https://github.com/bimakw/multichain-rpc-proxy)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=flat&logo=docker)](https://hub.docker.com/)
@@ -18,7 +18,10 @@ A high-performance, multi-chain RPC load balancer and proxy written in Go. Desig
 - **WebSocket Support**: Full support for `eth_subscribe` and other subscription methods
 - **Prometheus Metrics**: Full observability with custom blockchain metrics
 - **Response Caching**: Cache static RPC calls (eth_chainId, net_version, etc.)
-- **Rate Limiting**: Token bucket algorithm with per-IP limiting
+- **Rate Limiting**: Token bucket & sliding window algorithms with per-IP and per-chain limits
+- **gRPC Support**: Full gRPC API with health checking service
+- **TLS Support**: Server and client TLS for secure connections
+- **Hot Config Reload**: Automatic reload on config file changes
 - **Docker Ready**: Production-ready containerization with Compose stack
 
 ## Documentation
@@ -188,15 +191,86 @@ chains:
 
 ## Architecture
 
+```mermaid
+flowchart TB
+    subgraph Clients
+        HTTP[HTTP/JSON-RPC<br/>Client]
+        WS[WebSocket<br/>Client]
+        GRPC[gRPC<br/>Client]
+    end
+
+    subgraph "RPC Proxy"
+        subgraph "API Layer"
+            FIB[Fiber HTTP]
+            WSH[WebSocket Handler]
+            GRPCS[gRPC Server]
+        end
+
+        subgraph "Middleware"
+            RL[Rate Limiter]
+            CACHE[Response Cache]
+            MW[Logging/Recovery]
+        end
+
+        subgraph "Core"
+            CM[Chain Manager]
+            CB[Circuit Breaker]
+            LB[Load Balancer]
+            HC[Health Checker]
+        end
+
+        subgraph "Transport"
+            POOL[Connection Pool]
+            TLS[TLS Handler]
+        end
+    end
+
+    subgraph "Backend Endpoints"
+        subgraph "Ethereum"
+            E1[RPC Node 1]
+            E2[RPC Node 2]
+        end
+        subgraph "Arbitrum"
+            A1[RPC Node 1]
+            A2[RPC Node 2]
+        end
+        subgraph "Optimism"
+            O1[RPC Node 1]
+            O2[RPC Node 2]
+        end
+    end
+
+    HTTP --> FIB
+    WS --> WSH
+    GRPC --> GRPCS
+
+    FIB --> RL
+    WSH --> RL
+    GRPCS --> RL
+
+    RL --> CACHE
+    CACHE --> CM
+    CM --> CB
+    CB --> LB
+    LB --> POOL
+    POOL --> TLS
+
+    HC --> E1 & E2 & A1 & A2 & O1 & O2
+    TLS --> E1 & E2 & A1 & A2 & O1 & O2
+```
+
+### Request Flow
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                      Client Request                          │
+│           (HTTP, WebSocket, or gRPC)                         │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                    Rate Limiter                              │
-│              (Token Bucket, Per-IP)                          │
+│        (Token Bucket / Sliding Window, Per-IP/Chain)         │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -216,6 +290,12 @@ chains:
     ┌──────────┐        ┌──────────┐        ┌──────────┐
     │ Ethereum │        │ Arbitrum │        │ Optimism │
     │  Chain   │        │  Chain   │        │  Chain   │
+    └──────────┘        └──────────┘        └──────────┘
+          │                   │                   │
+          ▼                   ▼                   ▼
+    ┌──────────┐        ┌──────────┐        ┌──────────┐
+    │ Circuit  │        │ Circuit  │        │ Circuit  │
+    │ Breaker  │        │ Breaker  │        │ Breaker  │
     └──────────┘        └──────────┘        └──────────┘
           │                   │                   │
           ▼                   ▼                   ▼

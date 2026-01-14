@@ -1,6 +1,7 @@
 package websocket
 
 import (
+	"context"
 	"log"
 	"sync"
 	"time"
@@ -10,17 +11,21 @@ import (
 
 // PoolConfig holds connection pool configuration
 type PoolConfig struct {
-	MaxConnections   int           `yaml:"max_connections"`
-	IdleTimeout      time.Duration `yaml:"idle_timeout"`
+	MaxConnections      int           `yaml:"max_connections"`
+	IdleTimeout         time.Duration `yaml:"idle_timeout"`
 	HealthCheckInterval time.Duration `yaml:"health_check_interval"`
+	WaitTimeout         time.Duration `yaml:"wait_timeout"`
+	MaxLifetime         time.Duration `yaml:"max_lifetime"`
 }
 
 // DefaultPoolConfig returns sensible defaults
 func DefaultPoolConfig() PoolConfig {
 	return PoolConfig{
-		MaxConnections:   10,
-		IdleTimeout:      5 * time.Minute,
+		MaxConnections:      10,
+		IdleTimeout:         5 * time.Minute,
 		HealthCheckInterval: 30 * time.Second,
+		WaitTimeout:         10 * time.Second,
+		MaxLifetime:         30 * time.Minute,
 	}
 }
 
@@ -90,6 +95,40 @@ func (p *ConnectionPool) Get() (*PooledConnection, error) {
 	return nil, ErrPoolExhausted
 }
 
+// GetWithWait retrieves a connection, waiting if the pool is exhausted
+func (p *ConnectionPool) GetWithWait(ctx context.Context) (*PooledConnection, error) {
+	// Try immediate get first
+	conn, err := p.Get()
+	if err != ErrPoolExhausted {
+		return conn, err
+	}
+
+	// Set up wait timeout
+	waitTimeout := p.config.WaitTimeout
+	if waitTimeout == 0 {
+		waitTimeout = 10 * time.Second
+	}
+
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+
+	timeout := time.After(waitTimeout)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-timeout:
+			return nil, ErrPoolExhausted
+		case <-ticker.C:
+			conn, err := p.Get()
+			if err != ErrPoolExhausted {
+				return conn, err
+			}
+		}
+	}
+}
+
 // Put returns a connection to the pool
 func (p *ConnectionPool) Put(conn *PooledConnection) {
 	p.mu.Lock()
@@ -152,6 +191,11 @@ func (p *ConnectionPool) createConnection() (*PooledConnection, error) {
 func (p *ConnectionPool) isHealthy(conn *PooledConnection) bool {
 	// Check idle timeout
 	if time.Since(conn.LastUsedAt) > p.config.IdleTimeout {
+		return false
+	}
+
+	// Check max lifetime
+	if p.config.MaxLifetime > 0 && time.Since(conn.CreatedAt) > p.config.MaxLifetime {
 		return false
 	}
 

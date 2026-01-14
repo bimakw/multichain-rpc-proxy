@@ -1,0 +1,133 @@
+syntax = "proto3";
+
+package rpc.v1;
+
+option go_package = "github.com/bimakw/multichain-rpc-proxy/api/gen/rpc/v1;rpcv1";
+
+// RPCService provides RPC proxy functionality over gRPC
+service RPCService {
+    // Call performs a single JSON-RPC call
+    rpc Call(RPCRequest) returns (RPCResponse);
+
+    // BatchCall performs multiple JSON-RPC calls
+    rpc BatchCall(BatchRPCRequest) returns (BatchRPCResponse);
+
+    // StreamCalls allows bidirectional streaming for subscriptions
+    rpc StreamCalls(stream RPCRequest) returns (stream RPCResponse);
+}
+
+// HealthService provides health check functionality
+service HealthService {
+    // Check returns overall proxy health
+    rpc Check(HealthCheckRequest) returns (HealthCheckResponse);
+
+    // CheckChain returns health for a specific chain
+    rpc CheckChain(ChainHealthRequest) returns (ChainHealthResponse);
+
+    // ListChains returns all available chains
+    rpc ListChains(ListChainsRequest) returns (ListChainsResponse);
+}
+
+message RPCRequest {
+    // Target chain name (e.g., "ethereum", "arbitrum")
+    string chain = 1;
+
+    // JSON-RPC version (usually "2.0")
+    string jsonrpc = 2;
+
+    // RPC method to call
+    string method = 3;
+
+    // Parameters as JSON bytes
+    bytes params = 4;
+
+    // Request ID
+    int64 id = 5;
+}
+
+message RPCResponse {
+    string jsonrpc = 1;
+
+    // Result as JSON bytes (mutually exclusive with error)
+    bytes result = 2;
+
+    // Error if request failed
+    RPCError error = 3;
+
+    // Request ID echoed back
+    int64 id = 4;
+
+    // Whether response was served from cache
+    bool cached = 5;
+}
+
+message RPCError {
+    int32 code = 1;
+    string message = 2;
+    bytes data = 3;
+}
+
+message BatchRPCRequest {
+    repeated RPCRequest requests = 1;
+}
+
+message BatchRPCResponse {
+    repeated RPCResponse responses = 1;
+}
+
+// Health check messages
+message HealthCheckRequest {}
+
+message HealthCheckResponse {
+    enum Status {
+        UNKNOWN = 0;
+        HEALTHY = 1;
+        DEGRADED = 2;
+        UNHEALTHY = 3;
+    }
+    Status status = 1;
+    map<string, ChainStatus> chains = 2;
+}
+
+message ChainStatus {
+    bool healthy = 1;
+    int32 healthy_endpoints = 2;
+    int32 total_endpoints = 3;
+    int64 block_height = 4;
+}
+
+message ChainHealthRequest {
+    string chain = 1;
+}
+
+message ChainHealthResponse {
+    string chain = 1;
+    int32 chain_id = 2;
+    bool healthy = 3;
+    int64 highest_block = 4;
+    repeated EndpointStatus endpoints = 5;
+}
+
+message EndpointStatus {
+    string url = 1;
+    bool healthy = 2;
+    int64 block_height = 3;
+    double latency_ms = 4;
+    int64 total_requests = 5;
+    int64 failed_requests = 6;
+}
+
+message ListChainsRequest {}
+
+message ListChainsResponse {
+    repeated ChainInfo chains = 1;
+}
+
+message ChainInfo {
+    string name = 1;
+    int32 chain_id = 2;
+    bool healthy = 3;
+    int32 healthy_endpoints = 4;
+    int32 total_endpoints = 5;
+    int64 block_height = 6;
+}

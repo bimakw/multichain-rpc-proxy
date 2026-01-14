@@ -8,7 +8,7 @@ on:
     branches: [main, master]
 
 env:
-  GO_VERSION: '1.22'
+  GO_VERSION: '1.24'
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
@@ -87,9 +87,10 @@ jobs:
 
       - name: Build binary
         run: |
-          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o bin/multichain-rpc-proxy ./cmd/proxy
-          CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o bin/multichain-rpc-proxy-darwin-amd64 ./cmd/proxy
-          CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o bin/multichain-rpc-proxy-darwin-arm64 ./cmd/proxy
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w -X main.version=${{ github.ref_name }}" -o bin/multichain-rpc-proxy-linux-amd64 ./cmd/proxy
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="-s -w -X main.version=${{ github.ref_name }}" -o bin/multichain-rpc-proxy-linux-arm64 ./cmd/proxy
+          CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w -X main.version=${{ github.ref_name }}" -o bin/multichain-rpc-proxy-darwin-amd64 ./cmd/proxy
+          CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w -X main.version=${{ github.ref_name }}" -o bin/multichain-rpc-proxy-darwin-arm64 ./cmd/proxy
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -170,7 +171,8 @@ jobs:
         with:
           generate_release_notes: true
           files: |
-            bin/multichain-rpc-proxy
+            bin/multichain-rpc-proxy-linux-amd64
+            bin/multichain-rpc-proxy-linux-arm64
             bin/multichain-rpc-proxy-darwin-amd64
             bin/multichain-rpc-proxy-darwin-arm64
             bin/checksums.txt

@@ -2,6 +2,7 @@ package chain
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"log"
 	"sync"
@@ -22,12 +23,37 @@ type Chain struct {
 	mu            sync.RWMutex
 }
 
+// ChainOptions holds options for creating a chain
+type ChainOptions struct {
+	Name      string
+	Config    *config.ChainConfig
+	TLSConfig *tls.Config
+}
+
 // NewChain creates a new chain from config
 func NewChain(name string, cfg *config.ChainConfig) *Chain {
+	return NewChainWithOptions(ChainOptions{
+		Name:   name,
+		Config: cfg,
+	})
+}
+
+// NewChainWithOptions creates a new chain with full options including TLS
+func NewChainWithOptions(opts ChainOptions) *Chain {
+	cfg := opts.Config
 	endpoints := make([]*Endpoint, 0, len(cfg.Endpoints))
 
 	for _, epCfg := range cfg.Endpoints {
-		var ep *Endpoint
+		epOpts := EndpointOptions{
+			URL:        epCfg.URL,
+			Weight:     epCfg.Weight,
+			Timeout:    cfg.HealthCheck.Timeout,
+			TLSConfig:  opts.TLSConfig,
+			PoolConfig: cfg.HTTPPool,
+		}
+
+		ep := NewEndpointWithOptions(epOpts)
+
 		if cfg.CircuitBreaker.Enabled {
 			cbConfig := CircuitBreakerConfig{
 				FailureThreshold:    cfg.CircuitBreaker.FailureThreshold,
@@ -48,15 +74,13 @@ func NewChain(name string, cfg *config.ChainConfig) *Chain {
 			if cbConfig.HalfOpenMaxRequests == 0 {
 				cbConfig.HalfOpenMaxRequests = 3
 			}
-			ep = NewEndpointWithCircuitBreaker(epCfg.URL, epCfg.Weight, cfg.HealthCheck.Timeout, cbConfig)
-		} else {
-			ep = NewEndpoint(epCfg.URL, epCfg.Weight, cfg.HealthCheck.Timeout)
+			ep.circuitBreaker = NewCircuitBreaker(cbConfig)
 		}
 		endpoints = append(endpoints, ep)
 	}
 
 	chain := &Chain{
-		Name:         name,
+		Name:         opts.Name,
 		ChainID:      cfg.ChainID,
 		endpoints:    endpoints,
 		loadBalancer: NewLoadBalancer(endpoints),
@@ -176,14 +200,31 @@ type Manager struct {
 	mu     sync.RWMutex
 }
 
+// ManagerOptions holds options for creating a manager
+type ManagerOptions struct {
+	Chains    map[string]*config.ChainConfig
+	TLSConfig *tls.Config
+}
+
 // NewManager creates a new chain manager
 func NewManager(cfg map[string]*config.ChainConfig) *Manager {
+	return NewManagerWithOptions(ManagerOptions{
+		Chains: cfg,
+	})
+}
+
+// NewManagerWithOptions creates a new chain manager with TLS support
+func NewManagerWithOptions(opts ManagerOptions) *Manager {
 	m := &Manager{
 		chains: make(map[string]*Chain),
 	}
 
-	for name, chainCfg := range cfg {
-		m.chains[name] = NewChain(name, chainCfg)
+	for name, chainCfg := range opts.Chains {
+		m.chains[name] = NewChainWithOptions(ChainOptions{
+			Name:      name,
+			Config:    chainCfg,
+			TLSConfig: opts.TLSConfig,
+		})
 	}
 
 	return m

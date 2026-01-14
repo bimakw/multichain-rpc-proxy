@@ -3,6 +3,7 @@ package chain
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -10,6 +11,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/bimakw/multichain-rpc-proxy/internal/config"
 )
 
 // Endpoint represents a single RPC endpoint
@@ -28,18 +31,49 @@ type Endpoint struct {
 	circuitBreaker *CircuitBreaker
 }
 
+// EndpointOptions holds options for creating an endpoint
+type EndpointOptions struct {
+	URL        string
+	Weight     int
+	Timeout    time.Duration
+	TLSConfig  *tls.Config
+	PoolConfig config.HTTPPoolConfig
+}
+
 // NewEndpoint creates a new endpoint
 func NewEndpoint(url string, weight int, timeout time.Duration) *Endpoint {
+	return NewEndpointWithOptions(EndpointOptions{
+		URL:     url,
+		Weight:  weight,
+		Timeout: timeout,
+		PoolConfig: config.HTTPPoolConfig{
+			MaxIdleConns:        100,
+			MaxIdleConnsPerHost: 100,
+			IdleConnTimeout:     90 * time.Second,
+		},
+	})
+}
+
+// NewEndpointWithOptions creates a new endpoint with full options
+func NewEndpointWithOptions(opts EndpointOptions) *Endpoint {
+	transport := &http.Transport{
+		MaxIdleConns:        opts.PoolConfig.MaxIdleConns,
+		MaxIdleConnsPerHost: opts.PoolConfig.MaxIdleConnsPerHost,
+		MaxConnsPerHost:     opts.PoolConfig.MaxConnsPerHost,
+		IdleConnTimeout:     opts.PoolConfig.IdleConnTimeout,
+	}
+
+	// Apply TLS config if provided
+	if opts.TLSConfig != nil {
+		transport.TLSClientConfig = opts.TLSConfig
+	}
+
 	e := &Endpoint{
-		URL:    url,
-		Weight: weight,
+		URL:    opts.URL,
+		Weight: opts.Weight,
 		client: &http.Client{
-			Timeout: timeout,
-			Transport: &http.Transport{
-				MaxIdleConns:        100,
-				MaxIdleConnsPerHost: 100,
-				IdleConnTimeout:     90 * time.Second,
-			},
+			Timeout:   opts.Timeout,
+			Transport: transport,
 		},
 	}
 	e.healthy.Store(true) // assume healthy initially
