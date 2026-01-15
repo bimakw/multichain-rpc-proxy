@@ -52,7 +52,6 @@ type Handler struct {
 	manager *chain.Manager
 	config  Config
 	pools   map[string]*ConnectionPool
-	mu      sync.RWMutex
 }
 
 // NewHandler creates a new WebSocket handler
@@ -124,7 +123,6 @@ type ClientSession struct {
 	backendConn   *websocket.Conn
 	handler       *Handler
 	subscriptions map[string]bool
-	subMu         sync.RWMutex
 	done          chan struct{}
 	writeMu       sync.Mutex
 }

@@ -172,7 +172,7 @@ func RecoveryMiddleware() fiber.Handler {
 				if chainName != "" {
 					metrics.RecordError(chainName, "panic")
 				}
-				c.Status(500).JSON(fiber.Map{
+				_ = c.Status(500).JSON(fiber.Map{
 					"jsonrpc": "2.0",
 					"error": fiber.Map{
 						"code":    -32603,

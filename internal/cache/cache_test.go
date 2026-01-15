@@ -248,7 +248,7 @@ func TestInMemoryCache_EmptyParams(t *testing.T) {
 
 	// Test with empty slice params
 	cache.Set(chain, method, []byte{}, response)
-	got, found = cache.Get(chain, method, []byte{})
+	_, found = cache.Get(chain, method, []byte{})
 	if !found {
 		t.Error("Should find entry with empty params")
 	}
@@ -687,7 +687,7 @@ func TestCache_EmptyParams(t *testing.T) {
 		t.Fatalf("Set with empty params failed: %v", err)
 	}
 
-	got, found = cache.Get(ctx, chain, method, []byte{})
+	_, found = cache.Get(ctx, chain, method, []byte{})
 	if !found {
 		t.Error("Should find entry with empty params")
 	}
