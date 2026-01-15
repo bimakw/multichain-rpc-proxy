@@ -20,7 +20,6 @@ type Chain struct {
 	loadBalancer  *LoadBalancer
 	healthChecker *HealthChecker
 	highestBlock  atomic.Int64
-	mu            sync.RWMutex
 }
 
 // ChainOptions holds options for creating a chain

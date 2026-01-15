@@ -138,11 +138,11 @@ type SlidingWindowLimiter struct {
 }
 
 type slidingWindow struct {
-	prevCount   int
-	currCount   int
-	prevWindow  time.Time
-	currWindow  time.Time
-	windowSize  time.Duration
+	prevCount  int
+	currCount  int
+	prevWindow time.Time
+	currWindow time.Time
+	windowSize time.Duration
 }
 
 // NewSlidingWindowLimiter creates a new sliding window limiter

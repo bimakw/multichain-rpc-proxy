@@ -10,19 +10,19 @@ import (
 	"google.golang.org/grpc/health"
 	healthgrpc "google.golang.org/grpc/health/grpc_health_v1"
 
+	rpcv1 "github.com/bimakw/multichain-rpc-proxy/api/gen/rpc/v1"
 	"github.com/bimakw/multichain-rpc-proxy/internal/cache"
 	"github.com/bimakw/multichain-rpc-proxy/internal/chain"
 	"github.com/bimakw/multichain-rpc-proxy/internal/config"
-	rpcv1 "github.com/bimakw/multichain-rpc-proxy/api/gen/rpc/v1"
 )
 
 // Server represents the gRPC server
 type Server struct {
-	config    config.GRPCConfig
-	manager   *chain.Manager
-	cache     *cache.InMemoryCache
-	grpcSrv   *grpc.Server
-	listener  net.Listener
+	config   config.GRPCConfig
+	manager  *chain.Manager
+	cache    *cache.InMemoryCache
+	grpcSrv  *grpc.Server
+	listener net.Listener
 }
 
 // NewServer creates a new gRPC server

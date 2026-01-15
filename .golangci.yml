@@ -17,6 +17,19 @@ linters:
     - unparam
 
 linters-settings:
+  errcheck:
+    exclude-functions:
+      - (net.Conn).Close
+      - (net.Conn).SetDeadline
+      - (net.Conn).SetReadDeadline
+      - (net.Conn).SetWriteDeadline
+      - (*github.com/gorilla/websocket.Conn).Close
+      - (*github.com/gorilla/websocket.Conn).SetWriteDeadline
+      - (*github.com/gorilla/websocket.Conn).SetReadDeadline
+      - (*github.com/gorilla/websocket.Conn).WriteMessage
+      - (*net/http.Response.Body).Close
+      - (io.Closer).Close
+      - (*os.File).Close
   gofmt:
     simplify: true
   goimports:
@@ -31,3 +44,6 @@ issues:
       linters:
         - errcheck
         - unparam
+    - linters:
+        - errcheck
+      text: "Error return value of .((os\\.)?std(out|err)\\..*|.*Close|.*Flush|os\\.Remove(All)?|.*printf?|os\\.(Un)?Setenv). is not checked"

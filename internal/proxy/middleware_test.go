@@ -58,8 +58,8 @@ func TestRateLimiter_Allow_Disabled(t *testing.T) {
 func TestRateLimiter_Allow_BurstLimit(t *testing.T) {
 	rl := &RateLimiter{
 		enabled: true,
-		rate:    10,  // 10 per second
-		burst:   5,   // burst of 5
+		rate:    10, // 10 per second
+		burst:   5,  // burst of 5
 		buckets: make(map[string]*bucket),
 	}
 
