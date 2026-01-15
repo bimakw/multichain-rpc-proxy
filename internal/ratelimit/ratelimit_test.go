@@ -117,13 +117,15 @@ func TestSlidingWindowLimiter_WindowRotation(t *testing.T) {
 		limiter.Allow(key)
 	}
 
-	// Wait for window to fully rotate (>1 second ensures we're in new window)
-	time.Sleep(1100 * time.Millisecond)
+	// Wait for window to fully rotate and decay enough to allow new requests
+	// With rate=5 and prevCount=5, we need weight <= 0.8 to allow 1 request
+	// weight = 1.0 - (elapsed / windowSize), so elapsed >= 200ms into new window
+	// Wait 1500ms (1000ms + 500ms) to ensure weight = 0.5, allowing 2-3 requests
+	time.Sleep(1500 * time.Millisecond)
 
 	// Should allow some requests now (sliding window effect)
-	// Previous window had 5 requests, current window has 0
-	// With 100ms elapsed in new window, weight = 0.9, weightedCount = 4.5
-	// So we should be able to allow at least 1 request
+	// With 500ms elapsed in new window, weight = 0.5, weightedCount = 2.5
+	// So we should be able to allow 2 requests (2.5 + 2 = 4.5 <= 5)
 	allowed := 0
 	for i := 0; i < 5; i++ {
 		if limiter.Allow(key) {
@@ -131,7 +133,7 @@ func TestSlidingWindowLimiter_WindowRotation(t *testing.T) {
 		}
 	}
 
-	// Should have allowed some requests (previous window's count decays)
+	// Should have allowed at least 1 request (previous window's count decays)
 	if allowed == 0 {
 		t.Errorf("Expected some allowance after window rotation, got %d", allowed)
 	}
