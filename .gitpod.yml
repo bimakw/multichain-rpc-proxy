@@ -1,0 +1,62 @@
+# Gitpod configuration for Multichain RPC Proxy
+# Try it: https://gitpod.io/#https://github.com/bimakw/multichain-rpc-proxy
+
+image: gitpod/workspace-go
+
+tasks:
+  - name: Setup & Build
+    init: |
+      go mod download
+      go build -o rpc-proxy ./cmd/proxy
+    command: |
+      echo "========================================="
+      echo "  Multichain RPC Proxy - Demo Environment"
+      echo "========================================="
+      echo ""
+      echo "Starting RPC Proxy with public endpoints..."
+      echo ""
+      ./rpc-proxy -config configs/config.yaml
+
+  - name: Test Client
+    command: |
+      echo "Waiting for proxy to start..."
+      sleep 5
+      gp await-port 8080
+      echo ""
+      echo "========================================="
+      echo "  Test Commands"
+      echo "========================================="
+      echo ""
+      echo "# Get Ethereum block number:"
+      echo 'curl -X POST http://localhost:8080/ethereum -H "Content-Type: application/json" -d '\''{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}'\'''
+      echo ""
+      echo "# Get Arbitrum chain ID:"
+      echo 'curl -X POST http://localhost:8080/arbitrum -H "Content-Type: application/json" -d '\''{"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":1}'\'''
+      echo ""
+      echo "# Get Polygon gas price:"
+      echo 'curl -X POST http://localhost:8080/polygon -H "Content-Type: application/json" -d '\''{"jsonrpc":"2.0","method":"eth_gasPrice","params":[],"id":1}'\'''
+      echo ""
+      echo "# Check health:"
+      echo "curl http://localhost:8080/health"
+      echo ""
+      echo "# Check metrics:"
+      echo "curl http://localhost:9090/metrics"
+      echo ""
+      echo "========================================="
+      echo "RPC Proxy is ready! Try the commands above."
+      echo ""
+      echo "Supported chains: /ethereum, /arbitrum, /optimism, /base, /polygon"
+
+ports:
+  - port: 8080
+    onOpen: open-preview
+    visibility: public
+    name: RPC Proxy
+  - port: 9090
+    onOpen: ignore
+    visibility: public
+    name: Metrics
+
+vscode:
+  extensions:
+    - golang.go

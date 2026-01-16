@@ -1,9 +1,12 @@
 # Multichain RPC Proxy
 
+[![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/bimakw/multichain-rpc-proxy)
+
 [![Go Version](https://img.shields.io/badge/Go-1.24+-00ADD8?style=flat&logo=go)](https://go.dev/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Test Coverage](https://img.shields.io/badge/coverage-79%25-green.svg)](https://github.com/bimakw/multichain-rpc-proxy)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=flat&logo=docker)](https://hub.docker.com/)
+[![CI](https://github.com/bimakw/multichain-rpc-proxy/actions/workflows/ci.yml/badge.svg)](https://github.com/bimakw/multichain-rpc-proxy/actions/workflows/ci.yml)
 
 A high-performance, multi-chain RPC load balancer and proxy written in Go. Designed for blockchain infrastructure reliability with automatic health checking, failover, and comprehensive observability.
 
