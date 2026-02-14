@@ -23,7 +23,6 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-// Config holds WebSocket configuration
 type Config struct {
 	Enabled          bool          `yaml:"enabled"`
 	PingInterval     time.Duration `yaml:"ping_interval"`
@@ -34,7 +33,6 @@ type Config struct {
 	MaxReconnects    int           `yaml:"max_reconnects"`
 }
 
-// DefaultConfig returns sensible defaults
 func DefaultConfig() Config {
 	return Config{
 		Enabled:          true,
@@ -47,14 +45,12 @@ func DefaultConfig() Config {
 	}
 }
 
-// Handler handles WebSocket connections
 type Handler struct {
 	manager *chain.Manager
 	config  Config
 	pools   map[string]*ConnectionPool
 }
 
-// NewHandler creates a new WebSocket handler
 func NewHandler(manager *chain.Manager, config Config) *Handler {
 	return &Handler{
 		manager: manager,
@@ -84,7 +80,6 @@ type rpcError struct {
 	Message string `json:"message"`
 }
 
-// HandleWebSocket handles WebSocket upgrade and message proxying
 func (h *Handler) HandleWebSocket(w http.ResponseWriter, r *http.Request, chainName string) {
 	ch, ok := h.manager.GetChain(chainName)
 	if !ok {
@@ -92,7 +87,6 @@ func (h *Handler) HandleWebSocket(w http.ResponseWriter, r *http.Request, chainN
 		return
 	}
 
-	// Upgrade HTTP connection to WebSocket
 	clientConn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Printf("[WS] Failed to upgrade connection: %v", err)
@@ -101,7 +95,6 @@ func (h *Handler) HandleWebSocket(w http.ResponseWriter, r *http.Request, chainN
 
 	log.Printf("[WS][%s] New client connection from %s", chainName, r.RemoteAddr)
 
-	// Create client session
 	session := &ClientSession{
 		chainName:     chainName,
 		chain:         ch,
@@ -111,11 +104,9 @@ func (h *Handler) HandleWebSocket(w http.ResponseWriter, r *http.Request, chainN
 		done:          make(chan struct{}),
 	}
 
-	// Run session
 	session.Run()
 }
 
-// ClientSession represents a client WebSocket session
 type ClientSession struct {
 	chainName     string
 	chain         *chain.Chain
@@ -127,18 +118,15 @@ type ClientSession struct {
 	writeMu       sync.Mutex
 }
 
-// Run starts the client session
 func (s *ClientSession) Run() {
 	defer s.Close()
 
-	// Connect to backend
 	if err := s.connectToBackend(); err != nil {
 		log.Printf("[WS][%s] Failed to connect to backend: %v", s.chainName, err)
 		s.sendError(nil, -32603, "Failed to connect to backend")
 		return
 	}
 
-	// Start goroutines for bidirectional message forwarding
 	go s.forwardFromBackend()
 	s.forwardFromClient()
 }
@@ -147,7 +135,6 @@ func (s *ClientSession) Run() {
 func (s *ClientSession) connectToBackend() error {
 	stats := s.chain.Stats()
 
-	// Find a healthy endpoint
 	for _, ep := range stats.Endpoints {
 		if !ep.Healthy {
 			continue
@@ -202,7 +189,6 @@ func (s *ClientSession) forwardFromClient() {
 			continue
 		}
 
-		// Parse request to track subscriptions
 		var req rpcRequest
 		if err := json.Unmarshal(message, &req); err != nil {
 			s.sendError(nil, -32700, "Parse error")
@@ -211,7 +197,6 @@ func (s *ClientSession) forwardFromClient() {
 
 		metrics.RecordRequest(s.chainName, req.Method)
 
-		// Forward to backend
 		if s.backendConn == nil {
 			if err := s.connectToBackend(); err != nil {
 				s.sendError(req.ID, -32603, "Backend unavailable")
@@ -225,13 +210,11 @@ func (s *ClientSession) forwardFromClient() {
 			s.backendConn.Close()
 			s.backendConn = nil
 
-			// Try to reconnect
 			if err := s.connectToBackend(); err != nil {
 				s.sendError(req.ID, -32603, "Backend connection lost")
 				continue
 			}
 
-			// Retry the write
 			if err := s.backendConn.WriteMessage(websocket.TextMessage, message); err != nil {
 				s.sendError(req.ID, -32603, "Failed to send to backend")
 				continue
@@ -260,7 +243,6 @@ func (s *ClientSession) forwardFromBackend() {
 				log.Printf("[WS][%s] Backend read error: %v", s.chainName, err)
 			}
 
-			// Try to reconnect
 			s.backendConn.Close()
 			s.backendConn = nil
 
@@ -283,7 +265,6 @@ func (s *ClientSession) forwardFromBackend() {
 			continue
 		}
 
-		// Forward to client
 		s.writeMu.Lock()
 		s.clientConn.SetWriteDeadline(time.Now().Add(s.handler.config.WriteTimeout))
 		err = s.clientConn.WriteMessage(websocket.TextMessage, message)
@@ -319,7 +300,6 @@ func (s *ClientSession) sendError(id interface{}, code int, message string) {
 	s.clientConn.WriteMessage(websocket.TextMessage, data)
 }
 
-// Close closes the session
 func (s *ClientSession) Close() {
 	close(s.done)
 
@@ -344,7 +324,6 @@ func httpToWS(url string) string {
 	return url
 }
 
-// StartPinger starts a ping goroutine for connection health
 func (s *ClientSession) StartPinger(ctx context.Context) {
 	ticker := time.NewTicker(s.handler.config.PingInterval)
 	defer ticker.Stop()

@@ -16,7 +16,6 @@ import (
 	"github.com/bimakw/multichain-rpc-proxy/internal/config"
 )
 
-// Server represents the gRPC server
 type Server struct {
 	config   config.GRPCConfig
 	manager  *chain.Manager
@@ -25,7 +24,6 @@ type Server struct {
 	listener net.Listener
 }
 
-// NewServer creates a new gRPC server
 func NewServer(cfg config.GRPCConfig, manager *chain.Manager, cache *cache.InMemoryCache) (*Server, error) {
 	var opts []grpc.ServerOption
 
@@ -38,7 +36,6 @@ func NewServer(cfg config.GRPCConfig, manager *chain.Manager, cache *cache.InMem
 		opts = append(opts, grpc.Creds(creds))
 	}
 
-	// Add interceptors
 	opts = append(opts,
 		grpc.UnaryInterceptor(loggingUnaryInterceptor),
 		grpc.StreamInterceptor(loggingStreamInterceptor),
@@ -54,7 +51,6 @@ func NewServer(cfg config.GRPCConfig, manager *chain.Manager, cache *cache.InMem
 	}, nil
 }
 
-// Start starts the gRPC server
 func (s *Server) Start() error {
 	addr := fmt.Sprintf(":%d", s.config.Port)
 
@@ -64,14 +60,12 @@ func (s *Server) Start() error {
 	}
 	s.listener = listener
 
-	// Register services
 	rpcService := NewRPCService(s.manager, s.cache)
 	rpcv1.RegisterRPCServiceServer(s.grpcSrv, rpcService)
 
 	healthService := NewHealthService(s.manager)
 	rpcv1.RegisterHealthServiceServer(s.grpcSrv, healthService)
 
-	// Register standard gRPC health check
 	healthSrv := health.NewServer()
 	healthgrpc.RegisterHealthServer(s.grpcSrv, healthSrv)
 	healthSrv.SetServingStatus("", healthgrpc.HealthCheckResponse_SERVING)
@@ -87,7 +81,6 @@ func (s *Server) Start() error {
 	return nil
 }
 
-// Stop gracefully stops the gRPC server
 func (s *Server) Stop() {
 	log.Println("Stopping gRPC server...")
 	s.grpcSrv.GracefulStop()

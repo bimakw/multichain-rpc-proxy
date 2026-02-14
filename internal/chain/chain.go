@@ -12,7 +12,6 @@ import (
 	"github.com/bimakw/multichain-rpc-proxy/internal/config"
 )
 
-// Chain represents a blockchain network with multiple endpoints
 type Chain struct {
 	Name          string
 	ChainID       int
@@ -22,14 +21,12 @@ type Chain struct {
 	highestBlock  atomic.Int64
 }
 
-// ChainOptions holds options for creating a chain
 type ChainOptions struct {
 	Name      string
 	Config    *config.ChainConfig
 	TLSConfig *tls.Config
 }
 
-// NewChain creates a new chain from config
 func NewChain(name string, cfg *config.ChainConfig) *Chain {
 	return NewChainWithOptions(ChainOptions{
 		Name:   name,
@@ -60,7 +57,6 @@ func NewChainWithOptions(opts ChainOptions) *Chain {
 				Timeout:             cfg.CircuitBreaker.Timeout,
 				HalfOpenMaxRequests: cfg.CircuitBreaker.HalfOpenMaxRequests,
 			}
-			// Apply defaults if not set
 			if cbConfig.FailureThreshold == 0 {
 				cbConfig.FailureThreshold = 5
 			}
@@ -90,19 +86,16 @@ func NewChainWithOptions(opts ChainOptions) *Chain {
 	return chain
 }
 
-// Start begins health checking for the chain
 func (c *Chain) Start() {
 	log.Printf("Starting chain %s (chainId: %d) with %d endpoints", c.Name, c.ChainID, len(c.endpoints))
 	c.healthChecker.Start()
 }
 
-// Stop stops the chain
 func (c *Chain) Stop() {
 	log.Printf("Stopping chain %s", c.Name)
 	c.healthChecker.Stop()
 }
 
-// Forward forwards an RPC request to a healthy endpoint
 func (c *Chain) Forward(ctx context.Context, body []byte) ([]byte, error) {
 	ep, err := c.loadBalancer.Next()
 	if err != nil {
@@ -112,7 +105,6 @@ func (c *Chain) Forward(ctx context.Context, body []byte) ([]byte, error) {
 	return ep.Forward(ctx, body)
 }
 
-// ForwardWithRetry forwards with retry on failure
 func (c *Chain) ForwardWithRetry(ctx context.Context, body []byte, maxRetries int) ([]byte, error) {
 	var lastErr error
 
@@ -130,10 +122,8 @@ func (c *Chain) ForwardWithRetry(ctx context.Context, body []byte, maxRetries in
 		lastErr = err
 		log.Printf("[%s] Request to %s failed (attempt %d/%d): %v", c.Name, ep.URL, i+1, maxRetries+1, err)
 
-		// Mark endpoint as unhealthy after failure
 		ep.SetHealthy(false)
 
-		// Small delay before retry
 		if i < maxRetries {
 			select {
 			case <-ctx.Done():
@@ -146,27 +136,22 @@ func (c *Chain) ForwardWithRetry(ctx context.Context, body []byte, maxRetries in
 	return nil, fmt.Errorf("all retries failed: %w", lastErr)
 }
 
-// UpdateHighestBlock updates the highest known block
 func (c *Chain) UpdateHighestBlock(height int64) {
 	c.highestBlock.Store(height)
 }
 
-// HighestBlock returns the highest known block
 func (c *Chain) HighestBlock() int64 {
 	return c.highestBlock.Load()
 }
 
-// HealthyEndpoints returns the number of healthy endpoints
 func (c *Chain) HealthyEndpoints() int {
 	return c.loadBalancer.HealthyCount()
 }
 
-// TotalEndpoints returns the total number of endpoints
 func (c *Chain) TotalEndpoints() int {
 	return len(c.endpoints)
 }
 
-// Stats returns chain statistics
 func (c *Chain) Stats() ChainStats {
 	endpoints := make([]EndpointStats, 0, len(c.endpoints))
 	for _, ep := range c.endpoints {
@@ -183,7 +168,6 @@ func (c *Chain) Stats() ChainStats {
 	}
 }
 
-// ChainStats holds chain statistics
 type ChainStats struct {
 	Name             string
 	ChainID          int
@@ -193,26 +177,22 @@ type ChainStats struct {
 	Endpoints        []EndpointStats
 }
 
-// Manager manages multiple chains
 type Manager struct {
 	chains map[string]*Chain
 	mu     sync.RWMutex
 }
 
-// ManagerOptions holds options for creating a manager
 type ManagerOptions struct {
 	Chains    map[string]*config.ChainConfig
 	TLSConfig *tls.Config
 }
 
-// NewManager creates a new chain manager
 func NewManager(cfg map[string]*config.ChainConfig) *Manager {
 	return NewManagerWithOptions(ManagerOptions{
 		Chains: cfg,
 	})
 }
 
-// NewManagerWithOptions creates a new chain manager with TLS support
 func NewManagerWithOptions(opts ManagerOptions) *Manager {
 	m := &Manager{
 		chains: make(map[string]*Chain),
@@ -229,7 +209,6 @@ func NewManagerWithOptions(opts ManagerOptions) *Manager {
 	return m
 }
 
-// Start starts all chains
 func (m *Manager) Start() {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -239,7 +218,6 @@ func (m *Manager) Start() {
 	}
 }
 
-// Stop stops all chains
 func (m *Manager) Stop() {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -249,7 +227,6 @@ func (m *Manager) Stop() {
 	}
 }
 
-// GetChain returns a chain by name
 func (m *Manager) GetChain(name string) (*Chain, bool) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -271,7 +248,6 @@ func (m *Manager) GetChainByID(chainID int) (*Chain, bool) {
 	return nil, false
 }
 
-// ListChains returns all chain names
 func (m *Manager) ListChains() []string {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -283,7 +259,6 @@ func (m *Manager) ListChains() []string {
 	return names
 }
 
-// AllStats returns stats for all chains
 func (m *Manager) AllStats() map[string]ChainStats {
 	m.mu.RLock()
 	defer m.mu.RUnlock()

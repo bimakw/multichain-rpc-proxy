@@ -12,7 +12,6 @@ import (
 	"github.com/bimakw/multichain-rpc-proxy/internal/config"
 )
 
-// Cache provides caching for RPC responses
 type Cache struct {
 	client           *redis.Client
 	ttl              time.Duration
@@ -20,7 +19,6 @@ type Cache struct {
 	enabled          bool
 }
 
-// New creates a new cache instance
 func New(cfg config.RedisConfig, cacheCfg config.CacheConfig) (*Cache, error) {
 	if !cacheCfg.Enabled {
 		return &Cache{enabled: false}, nil
@@ -32,7 +30,6 @@ func New(cfg config.RedisConfig, cacheCfg config.CacheConfig) (*Cache, error) {
 		DB:       cfg.DB,
 	})
 
-	// Test connection
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -53,7 +50,6 @@ func New(cfg config.RedisConfig, cacheCfg config.CacheConfig) (*Cache, error) {
 	}, nil
 }
 
-// IsCacheable checks if a method is cacheable
 func (c *Cache) IsCacheable(method string) bool {
 	if !c.enabled {
 		return false
@@ -61,7 +57,6 @@ func (c *Cache) IsCacheable(method string) bool {
 	return c.cacheableMethods[method]
 }
 
-// Get retrieves a cached response
 func (c *Cache) Get(ctx context.Context, chain, method string, params []byte) ([]byte, bool) {
 	if !c.enabled {
 		return nil, false
@@ -76,7 +71,6 @@ func (c *Cache) Get(ctx context.Context, chain, method string, params []byte) ([
 	return val, true
 }
 
-// Set stores a response in cache
 func (c *Cache) Set(ctx context.Context, chain, method string, params []byte, response []byte) error {
 	if !c.enabled {
 		return nil
@@ -95,7 +89,6 @@ func (c *Cache) makeKey(chain, method string, params []byte) string {
 	return fmt.Sprintf("rpc:%s:%s:%s", chain, method, hex.EncodeToString(h.Sum(nil))[:16])
 }
 
-// Close closes the cache connection
 func (c *Cache) Close() error {
 	if c.client != nil {
 		return c.client.Close()
@@ -103,12 +96,10 @@ func (c *Cache) Close() error {
 	return nil
 }
 
-// Enabled returns whether caching is enabled
 func (c *Cache) Enabled() bool {
 	return c.enabled
 }
 
-// InMemoryCache provides a simple in-memory cache fallback
 type InMemoryCache struct {
 	data             map[string]cacheEntry
 	ttl              time.Duration
@@ -121,7 +112,6 @@ type cacheEntry struct {
 	expiresAt time.Time
 }
 
-// NewInMemory creates an in-memory cache
 func NewInMemory(cacheCfg config.CacheConfig) *InMemoryCache {
 	methods := make(map[string]bool)
 	for _, m := range cacheCfg.CacheableMethods {
@@ -136,7 +126,6 @@ func NewInMemory(cacheCfg config.CacheConfig) *InMemoryCache {
 	}
 }
 
-// IsCacheable checks if a method is cacheable
 func (c *InMemoryCache) IsCacheable(method string) bool {
 	if !c.enabled {
 		return false
@@ -144,7 +133,6 @@ func (c *InMemoryCache) IsCacheable(method string) bool {
 	return c.cacheableMethods[method]
 }
 
-// Get retrieves a cached response
 func (c *InMemoryCache) Get(chain, method string, params []byte) ([]byte, bool) {
 	if !c.enabled {
 		return nil, false
@@ -160,7 +148,6 @@ func (c *InMemoryCache) Get(chain, method string, params []byte) ([]byte, bool) 
 	return entry.value, true
 }
 
-// Set stores a response in cache
 func (c *InMemoryCache) Set(chain, method string, params []byte, response []byte) {
 	if !c.enabled {
 		return
@@ -181,7 +168,6 @@ func (c *InMemoryCache) makeKey(chain, method string, params []byte) string {
 	return hex.EncodeToString(h.Sum(nil))[:32]
 }
 
-// Enabled returns whether caching is enabled
 func (c *InMemoryCache) Enabled() bool {
 	return c.enabled
 }

@@ -10,18 +10,15 @@ import (
 	"github.com/bimakw/multichain-rpc-proxy/internal/chain"
 )
 
-// HealthService implements the gRPC health service
 type HealthService struct {
 	rpcv1.UnimplementedHealthServiceServer
 	manager *chain.Manager
 }
 
-// NewHealthService creates a new health service
 func NewHealthService(manager *chain.Manager) *HealthService {
 	return &HealthService{manager: manager}
 }
 
-// Check returns overall proxy health
 func (s *HealthService) Check(ctx context.Context, req *rpcv1.HealthCheckRequest) (*rpcv1.HealthCheckResponse, error) {
 	stats := s.manager.AllStats()
 
@@ -57,7 +54,6 @@ func (s *HealthService) Check(ctx context.Context, req *rpcv1.HealthCheckRequest
 	}, nil
 }
 
-// CheckChain returns health for a specific chain
 func (s *HealthService) CheckChain(ctx context.Context, req *rpcv1.ChainHealthRequest) (*rpcv1.ChainHealthResponse, error) {
 	ch, ok := s.manager.GetChain(req.Chain)
 	if !ok {
@@ -87,7 +83,6 @@ func (s *HealthService) CheckChain(ctx context.Context, req *rpcv1.ChainHealthRe
 	}, nil
 }
 
-// ListChains returns all available chains
 func (s *HealthService) ListChains(ctx context.Context, req *rpcv1.ListChainsRequest) (*rpcv1.ListChainsResponse, error) {
 	stats := s.manager.AllStats()
 

@@ -10,7 +10,6 @@ import (
 	"github.com/bimakw/multichain-rpc-proxy/internal/metrics"
 )
 
-// RateLimiter implements a token bucket rate limiter
 type RateLimiter struct {
 	enabled     bool
 	rate        float64
@@ -25,7 +24,6 @@ type bucket struct {
 	lastCheck time.Time
 }
 
-// NewRateLimiter creates a new rate limiter
 func NewRateLimiter(cfg config.RateLimitConfig) *RateLimiter {
 	rl := &RateLimiter{
 		enabled:     cfg.Enabled,
@@ -42,7 +40,6 @@ func NewRateLimiter(cfg config.RateLimitConfig) *RateLimiter {
 	return rl
 }
 
-// Allow checks if a request is allowed for the given key
 func (rl *RateLimiter) Allow(key string) bool {
 	if !rl.enabled {
 		return true
@@ -61,7 +58,6 @@ func (rl *RateLimiter) Allow(key string) bool {
 		rl.buckets[key] = b
 	}
 
-	// Add tokens based on time elapsed
 	elapsed := now.Sub(b.lastCheck).Seconds()
 	b.tokens += elapsed * rl.rate
 	if b.tokens > float64(rl.burst) {
@@ -69,7 +65,6 @@ func (rl *RateLimiter) Allow(key string) bool {
 	}
 	b.lastCheck = now
 
-	// Check if we have tokens
 	if b.tokens >= 1 {
 		b.tokens--
 		return true
@@ -95,14 +90,12 @@ func (rl *RateLimiter) cleanup() {
 	}
 }
 
-// Middleware returns a Fiber middleware for rate limiting
 func (rl *RateLimiter) Middleware() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		if !rl.enabled {
 			return c.Next()
 		}
 
-		// Use IP as key, could also use API key
 		key := c.IP()
 
 		if !rl.Allow(key) {
@@ -125,7 +118,6 @@ func (rl *RateLimiter) Middleware() fiber.Handler {
 	}
 }
 
-// LoggingMiddleware logs requests
 func LoggingMiddleware() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		start := time.Now()
@@ -135,9 +127,7 @@ func LoggingMiddleware() fiber.Handler {
 		duration := time.Since(start)
 		status := c.Response().StatusCode()
 
-		// Only log non-health endpoints
 		if c.Path() != "/health" && c.Path() != "/metrics" {
-			// Using structured logging format
 			_ = duration
 			_ = status
 			// log.Printf("method=%s path=%s status=%d duration=%s ip=%s",
@@ -163,7 +153,6 @@ func CORSMiddleware() fiber.Handler {
 	}
 }
 
-// RecoveryMiddleware recovers from panics
 func RecoveryMiddleware() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		defer func() {

@@ -9,8 +9,6 @@ import (
 	"github.com/bimakw/multichain-rpc-proxy/internal/config"
 )
 
-// NewClientTLSConfig creates a *tls.Config from ClientTLSConfig
-// Returns nil if TLS is not enabled
 func NewClientTLSConfig(cfg config.ClientTLSConfig) (*tls.Config, error) {
 	if !cfg.Enabled {
 		return nil, nil
@@ -21,7 +19,6 @@ func NewClientTLSConfig(cfg config.ClientTLSConfig) (*tls.Config, error) {
 		MinVersion:         tls.VersionTLS12,
 	}
 
-	// Load CA certificate if provided
 	if cfg.CAFile != "" {
 		caCert, err := os.ReadFile(cfg.CAFile)
 		if err != nil {
@@ -34,7 +31,6 @@ func NewClientTLSConfig(cfg config.ClientTLSConfig) (*tls.Config, error) {
 		tlsConfig.RootCAs = caCertPool
 	}
 
-	// Load client certificate for mTLS if provided
 	if cfg.CertFile != "" && cfg.KeyFile != "" {
 		cert, err := tls.LoadX509KeyPair(cfg.CertFile, cfg.KeyFile)
 		if err != nil {

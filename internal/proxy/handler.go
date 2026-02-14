@@ -12,13 +12,11 @@ import (
 	"github.com/bimakw/multichain-rpc-proxy/internal/metrics"
 )
 
-// Handler handles RPC proxy requests
 type Handler struct {
 	manager *chain.Manager
 	cache   *cache.InMemoryCache
 }
 
-// NewHandler creates a new proxy handler
 func NewHandler(manager *chain.Manager, c *cache.InMemoryCache) *Handler {
 	return &Handler{
 		manager: manager,
@@ -44,8 +42,6 @@ type rpcError struct {
 	ID interface{} `json:"id"`
 }
 
-// HandleRPC handles RPC requests for a specific chain
-// Route: POST /:chain
 func (h *Handler) HandleRPC(c *fiber.Ctx) error {
 	chainName := c.Params("chain")
 	start := time.Now()
@@ -60,7 +56,6 @@ func (h *Handler) HandleRPC(c *fiber.Ctx) error {
 
 	body := c.Body()
 
-	// Parse request to get method for metrics/caching
 	var req rpcRequest
 	if err := json.Unmarshal(body, &req); err != nil {
 		metrics.RecordError(chainName, "parse_error")
@@ -79,7 +74,6 @@ func (h *Handler) HandleRPC(c *fiber.Ctx) error {
 
 	metrics.RecordRequest(chainName, req.Method)
 
-	// Check cache for cacheable methods
 	if h.cache.IsCacheable(req.Method) {
 		if cached, ok := h.cache.Get(chainName, req.Method, req.Params); ok {
 			metrics.RecordCacheHit(chainName, req.Method)
@@ -90,7 +84,6 @@ func (h *Handler) HandleRPC(c *fiber.Ctx) error {
 		metrics.RecordCacheMiss(chainName, req.Method)
 	}
 
-	// Forward request to chain
 	resp, err := ch.ForwardWithRetry(c.Context(), body, 2)
 	if err != nil {
 		log.Printf("[%s] Forward error: %v", chainName, err)
@@ -109,7 +102,6 @@ func (h *Handler) HandleRPC(c *fiber.Ctx) error {
 		})
 	}
 
-	// Cache response if cacheable
 	if h.cache.IsCacheable(req.Method) {
 		h.cache.Set(chainName, req.Method, req.Params, resp)
 	}
@@ -120,8 +112,6 @@ func (h *Handler) HandleRPC(c *fiber.Ctx) error {
 	return c.Send(resp)
 }
 
-// HandleHealth handles health check endpoint
-// Route: GET /health
 func (h *Handler) HandleHealth(c *fiber.Ctx) error {
 	stats := h.manager.AllStats()
 
@@ -141,7 +131,6 @@ func (h *Handler) HandleHealth(c *fiber.Ctx) error {
 			"block_height":      s.HighestBlock,
 		}
 
-		// Update metrics
 		metrics.RecordHealthyEndpoints(name, s.HealthyEndpoints)
 		metrics.RecordTotalEndpoints(name, s.TotalEndpoints)
 		metrics.RecordBlockHeight(name, s.HighestBlock)
@@ -163,8 +152,6 @@ func (h *Handler) HandleHealth(c *fiber.Ctx) error {
 	})
 }
 
-// HandleChainHealth handles health check for a specific chain
-// Route: GET /health/:chain
 func (h *Handler) HandleChainHealth(c *fiber.Ctx) error {
 	chainName := c.Params("chain")
 
@@ -189,7 +176,6 @@ func (h *Handler) HandleChainHealth(c *fiber.Ctx) error {
 			"failed_reqs":  ep.FailedReqs,
 		})
 
-		// Update metrics
 		metrics.RecordEndpointHealth(chainName, ep.URL, ep.Healthy)
 		metrics.RecordEndpointBlockHeight(chainName, ep.URL, ep.BlockHeight)
 		metrics.RecordEndpointLatency(chainName, ep.URL, ep.LatencyMs)
@@ -211,8 +197,6 @@ func (h *Handler) HandleChainHealth(c *fiber.Ctx) error {
 	})
 }
 
-// HandleChains lists all available chains
-// Route: GET /chains
 func (h *Handler) HandleChains(c *fiber.Ctx) error {
 	stats := h.manager.AllStats()
 

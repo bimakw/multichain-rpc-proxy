@@ -13,7 +13,6 @@ import (
 	status "google.golang.org/grpc/status"
 )
 
-// This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
 // Requires gRPC-Go v1.64.0 or later.
 const _ = grpc.SupportPackageIsVersion9
@@ -30,11 +29,8 @@ const (
 //
 // RPCService provides RPC proxy functionality over gRPC
 type RPCServiceClient interface {
-	// Call performs a single JSON-RPC call
 	Call(ctx context.Context, in *RPCRequest, opts ...grpc.CallOption) (*RPCResponse, error)
-	// BatchCall performs multiple JSON-RPC calls
 	BatchCall(ctx context.Context, in *BatchRPCRequest, opts ...grpc.CallOption) (*BatchRPCResponse, error)
-	// StreamCalls allows bidirectional streaming for subscriptions
 	StreamCalls(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[RPCRequest, RPCResponse], error)
 }
 
@@ -80,21 +76,16 @@ func (c *rPCServiceClient) StreamCalls(ctx context.Context, opts ...grpc.CallOpt
 type RPCService_StreamCallsClient = grpc.BidiStreamingClient[RPCRequest, RPCResponse]
 
 // RPCServiceServer is the server API for RPCService service.
-// All implementations must embed UnimplementedRPCServiceServer
 // for forward compatibility.
 //
 // RPCService provides RPC proxy functionality over gRPC
 type RPCServiceServer interface {
-	// Call performs a single JSON-RPC call
 	Call(context.Context, *RPCRequest) (*RPCResponse, error)
-	// BatchCall performs multiple JSON-RPC calls
 	BatchCall(context.Context, *BatchRPCRequest) (*BatchRPCResponse, error)
-	// StreamCalls allows bidirectional streaming for subscriptions
 	StreamCalls(grpc.BidiStreamingServer[RPCRequest, RPCResponse]) error
 	mustEmbedUnimplementedRPCServiceServer()
 }
 
-// UnimplementedRPCServiceServer must be embedded to have
 // forward compatible implementations.
 //
 // NOTE: this should be embedded by value instead of pointer to avoid a nil
@@ -114,14 +105,12 @@ func (UnimplementedRPCServiceServer) mustEmbedUnimplementedRPCServiceServer() {}
 func (UnimplementedRPCServiceServer) testEmbeddedByValue()                    {}
 
 // UnsafeRPCServiceServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to RPCServiceServer will
 // result in compilation errors.
 type UnsafeRPCServiceServer interface {
 	mustEmbedUnimplementedRPCServiceServer()
 }
 
 func RegisterRPCServiceServer(s grpc.ServiceRegistrar, srv RPCServiceServer) {
-	// If the following call panics, it indicates UnimplementedRPCServiceServer was
 	// embedded by pointer and is nil.  This will cause panics if an
 	// unimplemented method is ever invoked, so we test this at initialization
 	// time to prevent it from happening at runtime later due to I/O.
@@ -211,13 +200,9 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
-// HealthService provides health check functionality
 type HealthServiceClient interface {
-	// Check returns overall proxy health
 	Check(ctx context.Context, in *HealthCheckRequest, opts ...grpc.CallOption) (*HealthCheckResponse, error)
-	// CheckChain returns health for a specific chain
 	CheckChain(ctx context.Context, in *ChainHealthRequest, opts ...grpc.CallOption) (*ChainHealthResponse, error)
-	// ListChains returns all available chains
 	ListChains(ctx context.Context, in *ListChainsRequest, opts ...grpc.CallOption) (*ListChainsResponse, error)
 }
 
@@ -260,21 +245,15 @@ func (c *healthServiceClient) ListChains(ctx context.Context, in *ListChainsRequ
 }
 
 // HealthServiceServer is the server API for HealthService service.
-// All implementations must embed UnimplementedHealthServiceServer
 // for forward compatibility.
 //
-// HealthService provides health check functionality
 type HealthServiceServer interface {
-	// Check returns overall proxy health
 	Check(context.Context, *HealthCheckRequest) (*HealthCheckResponse, error)
-	// CheckChain returns health for a specific chain
 	CheckChain(context.Context, *ChainHealthRequest) (*ChainHealthResponse, error)
-	// ListChains returns all available chains
 	ListChains(context.Context, *ListChainsRequest) (*ListChainsResponse, error)
 	mustEmbedUnimplementedHealthServiceServer()
 }
 
-// UnimplementedHealthServiceServer must be embedded to have
 // forward compatible implementations.
 //
 // NOTE: this should be embedded by value instead of pointer to avoid a nil
@@ -294,14 +273,12 @@ func (UnimplementedHealthServiceServer) mustEmbedUnimplementedHealthServiceServe
 func (UnimplementedHealthServiceServer) testEmbeddedByValue()                       {}
 
 // UnsafeHealthServiceServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to HealthServiceServer will
 // result in compilation errors.
 type UnsafeHealthServiceServer interface {
 	mustEmbedUnimplementedHealthServiceServer()
 }
 
 func RegisterHealthServiceServer(s grpc.ServiceRegistrar, srv HealthServiceServer) {
-	// If the following call panics, it indicates UnimplementedHealthServiceServer was
 	// embedded by pointer and is nil.  This will cause panics if an
 	// unimplemented method is ever invoked, so we test this at initialization
 	// time to prevent it from happening at runtime later due to I/O.

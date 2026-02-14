@@ -6,7 +6,6 @@ import (
 )
 
 var (
-	// RequestsTotal counts total requests per chain and method
 	RequestsTotal = promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "rpc_proxy_requests_total",
@@ -15,7 +14,6 @@ var (
 		[]string{"chain", "method"},
 	)
 
-	// RequestDuration measures request latency
 	RequestDuration = promauto.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Name:    "rpc_proxy_request_duration_seconds",
@@ -25,7 +23,6 @@ var (
 		[]string{"chain", "method", "status"},
 	)
 
-	// EndpointHealth tracks endpoint health status
 	EndpointHealth = promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "rpc_proxy_endpoint_healthy",
@@ -34,7 +31,6 @@ var (
 		[]string{"chain", "endpoint"},
 	)
 
-	// BlockHeight tracks the highest block per chain
 	BlockHeight = promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "rpc_proxy_block_height",
@@ -43,7 +39,6 @@ var (
 		[]string{"chain"},
 	)
 
-	// EndpointBlockHeight tracks block height per endpoint
 	EndpointBlockHeight = promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "rpc_proxy_endpoint_block_height",
@@ -52,7 +47,6 @@ var (
 		[]string{"chain", "endpoint"},
 	)
 
-	// EndpointLatency tracks endpoint latency
 	EndpointLatency = promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "rpc_proxy_endpoint_latency_ms",
@@ -61,7 +55,6 @@ var (
 		[]string{"chain", "endpoint"},
 	)
 
-	// CacheHits counts cache hits
 	CacheHits = promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "rpc_proxy_cache_hits_total",
@@ -70,7 +63,6 @@ var (
 		[]string{"chain", "method"},
 	)
 
-	// CacheMisses counts cache misses
 	CacheMisses = promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "rpc_proxy_cache_misses_total",
@@ -79,7 +71,6 @@ var (
 		[]string{"chain", "method"},
 	)
 
-	// RateLimitRejects counts rate limit rejections
 	RateLimitRejects = promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "rpc_proxy_rate_limit_rejects_total",
@@ -88,7 +79,6 @@ var (
 		[]string{"chain"},
 	)
 
-	// HealthyEndpoints tracks healthy endpoints per chain
 	HealthyEndpoints = promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "rpc_proxy_healthy_endpoints",
@@ -97,7 +87,6 @@ var (
 		[]string{"chain"},
 	)
 
-	// TotalEndpoints tracks total endpoints per chain
 	TotalEndpoints = promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "rpc_proxy_total_endpoints",
@@ -106,7 +95,6 @@ var (
 		[]string{"chain"},
 	)
 
-	// ErrorsTotal counts errors by type
 	ErrorsTotal = promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "rpc_proxy_errors_total",
@@ -116,17 +104,14 @@ var (
 	)
 )
 
-// RecordRequest records a request metric
 func RecordRequest(chain, method string) {
 	RequestsTotal.WithLabelValues(chain, method).Inc()
 }
 
-// RecordRequestDuration records request duration
 func RecordRequestDuration(chain, method, status string, duration float64) {
 	RequestDuration.WithLabelValues(chain, method, status).Observe(duration)
 }
 
-// RecordEndpointHealth records endpoint health
 func RecordEndpointHealth(chain, endpoint string, healthy bool) {
 	val := 0.0
 	if healthy {
@@ -135,47 +120,38 @@ func RecordEndpointHealth(chain, endpoint string, healthy bool) {
 	EndpointHealth.WithLabelValues(chain, endpoint).Set(val)
 }
 
-// RecordBlockHeight records block height
 func RecordBlockHeight(chain string, height int64) {
 	BlockHeight.WithLabelValues(chain).Set(float64(height))
 }
 
-// RecordEndpointBlockHeight records endpoint block height
 func RecordEndpointBlockHeight(chain, endpoint string, height int64) {
 	EndpointBlockHeight.WithLabelValues(chain, endpoint).Set(float64(height))
 }
 
-// RecordEndpointLatency records endpoint latency
 func RecordEndpointLatency(chain, endpoint string, latencyMs float64) {
 	EndpointLatency.WithLabelValues(chain, endpoint).Set(latencyMs)
 }
 
-// RecordCacheHit records a cache hit
 func RecordCacheHit(chain, method string) {
 	CacheHits.WithLabelValues(chain, method).Inc()
 }
 
-// RecordCacheMiss records a cache miss
 func RecordCacheMiss(chain, method string) {
 	CacheMisses.WithLabelValues(chain, method).Inc()
 }
 
-// RecordRateLimitReject records a rate limit rejection
 func RecordRateLimitReject(chain string) {
 	RateLimitRejects.WithLabelValues(chain).Inc()
 }
 
-// RecordHealthyEndpoints records healthy endpoint count
 func RecordHealthyEndpoints(chain string, count int) {
 	HealthyEndpoints.WithLabelValues(chain).Set(float64(count))
 }
 
-// RecordTotalEndpoints records total endpoint count
 func RecordTotalEndpoints(chain string, count int) {
 	TotalEndpoints.WithLabelValues(chain).Set(float64(count))
 }
 
-// RecordError records an error
 func RecordError(chain, errType string) {
 	ErrorsTotal.WithLabelValues(chain, errType).Inc()
 }

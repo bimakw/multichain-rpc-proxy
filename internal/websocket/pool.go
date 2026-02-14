@@ -9,7 +9,6 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// PoolConfig holds connection pool configuration
 type PoolConfig struct {
 	MaxConnections      int           `yaml:"max_connections"`
 	IdleTimeout         time.Duration `yaml:"idle_timeout"`
@@ -18,7 +17,6 @@ type PoolConfig struct {
 	MaxLifetime         time.Duration `yaml:"max_lifetime"`
 }
 
-// DefaultPoolConfig returns sensible defaults
 func DefaultPoolConfig() PoolConfig {
 	return PoolConfig{
 		MaxConnections:      10,
@@ -29,7 +27,6 @@ func DefaultPoolConfig() PoolConfig {
 	}
 }
 
-// PooledConnection represents a pooled WebSocket connection
 type PooledConnection struct {
 	Conn       *websocket.Conn
 	URL        string
@@ -38,7 +35,6 @@ type PooledConnection struct {
 	InUse      bool
 }
 
-// ConnectionPool manages a pool of WebSocket connections
 type ConnectionPool struct {
 	url         string
 	config      PoolConfig
@@ -48,7 +44,6 @@ type ConnectionPool struct {
 	done        chan struct{}
 }
 
-// NewConnectionPool creates a new connection pool
 func NewConnectionPool(url string, config PoolConfig) *ConnectionPool {
 	pool := &ConnectionPool{
 		url:         url,
@@ -57,13 +52,11 @@ func NewConnectionPool(url string, config PoolConfig) *ConnectionPool {
 		done:        make(chan struct{}),
 	}
 
-	// Start health check goroutine
 	go pool.healthCheck()
 
 	return pool
 }
 
-// Get retrieves a connection from the pool or creates a new one
 func (p *ConnectionPool) Get() (*PooledConnection, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -72,7 +65,6 @@ func (p *ConnectionPool) Get() (*PooledConnection, error) {
 		return nil, ErrPoolClosed
 	}
 
-	// Look for an available connection
 	for _, conn := range p.connections {
 		if !conn.InUse && p.isHealthy(conn) {
 			conn.InUse = true
@@ -81,7 +73,6 @@ func (p *ConnectionPool) Get() (*PooledConnection, error) {
 		}
 	}
 
-	// Create new connection if pool not full
 	if len(p.connections) < p.config.MaxConnections {
 		conn, err := p.createConnection()
 		if err != nil {
@@ -91,19 +82,15 @@ func (p *ConnectionPool) Get() (*PooledConnection, error) {
 		return conn, nil
 	}
 
-	// Pool is full, wait or return error
 	return nil, ErrPoolExhausted
 }
 
-// GetWithWait retrieves a connection, waiting if the pool is exhausted
 func (p *ConnectionPool) GetWithWait(ctx context.Context) (*PooledConnection, error) {
-	// Try immediate get first
 	conn, err := p.Get()
 	if err != ErrPoolExhausted {
 		return conn, err
 	}
 
-	// Set up wait timeout
 	waitTimeout := p.config.WaitTimeout
 	if waitTimeout == 0 {
 		waitTimeout = 10 * time.Second
@@ -129,7 +116,6 @@ func (p *ConnectionPool) GetWithWait(ctx context.Context) (*PooledConnection, er
 	}
 }
 
-// Put returns a connection to the pool
 func (p *ConnectionPool) Put(conn *PooledConnection) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -138,7 +124,6 @@ func (p *ConnectionPool) Put(conn *PooledConnection) {
 	conn.LastUsedAt = time.Now()
 }
 
-// Remove removes a connection from the pool
 func (p *ConnectionPool) Remove(conn *PooledConnection) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -152,7 +137,6 @@ func (p *ConnectionPool) Remove(conn *PooledConnection) {
 	}
 }
 
-// Close closes all connections in the pool
 func (p *ConnectionPool) Close() {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -189,12 +173,10 @@ func (p *ConnectionPool) createConnection() (*PooledConnection, error) {
 
 // isHealthy checks if a connection is still healthy
 func (p *ConnectionPool) isHealthy(conn *PooledConnection) bool {
-	// Check idle timeout
 	if time.Since(conn.LastUsedAt) > p.config.IdleTimeout {
 		return false
 	}
 
-	// Check max lifetime
 	if p.config.MaxLifetime > 0 && time.Since(conn.CreatedAt) > p.config.MaxLifetime {
 		return false
 	}
@@ -247,7 +229,6 @@ func (p *ConnectionPool) cleanup() {
 	p.connections = alive
 }
 
-// Stats returns pool statistics
 func (p *ConnectionPool) Stats() PoolStats {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -268,7 +249,6 @@ func (p *ConnectionPool) Stats() PoolStats {
 	return stats
 }
 
-// PoolStats holds connection pool statistics
 type PoolStats struct {
 	URL               string
 	TotalConnections  int
@@ -276,7 +256,6 @@ type PoolStats struct {
 	IdleConnections   int
 }
 
-// Error types
 type PoolError string
 
 func (e PoolError) Error() string {

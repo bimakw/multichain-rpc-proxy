@@ -10,7 +10,6 @@ var (
 	ErrNoHealthyEndpoints = errors.New("no healthy endpoints available")
 )
 
-// LoadBalancer selects endpoints using weighted round-robin
 type LoadBalancer struct {
 	endpoints []*Endpoint
 	weights   []int
@@ -18,7 +17,6 @@ type LoadBalancer struct {
 	mu        sync.RWMutex
 }
 
-// NewLoadBalancer creates a new load balancer
 func NewLoadBalancer(endpoints []*Endpoint) *LoadBalancer {
 	lb := &LoadBalancer{
 		endpoints: endpoints,
@@ -32,7 +30,6 @@ func NewLoadBalancer(endpoints []*Endpoint) *LoadBalancer {
 	return lb
 }
 
-// Next returns the next healthy endpoint using weighted round-robin
 func (lb *LoadBalancer) Next() (*Endpoint, error) {
 	lb.mu.RLock()
 	defer lb.mu.RUnlock()
@@ -41,7 +38,6 @@ func (lb *LoadBalancer) Next() (*Endpoint, error) {
 		return nil, ErrNoHealthyEndpoints
 	}
 
-	// Try weighted round-robin first
 	totalWeight := 0
 	for i, ep := range lb.endpoints {
 		if ep.IsHealthy() {
@@ -53,10 +49,8 @@ func (lb *LoadBalancer) Next() (*Endpoint, error) {
 		return nil, ErrNoHealthyEndpoints
 	}
 
-	// Get next index
 	idx := lb.current.Add(1)
 
-	// Weighted selection
 	selected := int(idx % int64(totalWeight))
 	cumulative := 0
 
@@ -70,7 +64,6 @@ func (lb *LoadBalancer) Next() (*Endpoint, error) {
 		}
 	}
 
-	// Fallback: return first healthy endpoint
 	for _, ep := range lb.endpoints {
 		if ep.IsHealthy() {
 			return ep, nil
@@ -80,14 +73,12 @@ func (lb *LoadBalancer) Next() (*Endpoint, error) {
 	return nil, ErrNoHealthyEndpoints
 }
 
-// NextWithFallback tries to get an endpoint, falls back to any available if all unhealthy
 func (lb *LoadBalancer) NextWithFallback() (*Endpoint, error) {
 	ep, err := lb.Next()
 	if err == nil {
 		return ep, nil
 	}
 
-	// Fallback: try any endpoint
 	lb.mu.RLock()
 	defer lb.mu.RUnlock()
 
@@ -99,7 +90,6 @@ func (lb *LoadBalancer) NextWithFallback() (*Endpoint, error) {
 	return nil, ErrNoHealthyEndpoints
 }
 
-// HealthyCount returns the number of healthy endpoints
 func (lb *LoadBalancer) HealthyCount() int {
 	lb.mu.RLock()
 	defer lb.mu.RUnlock()
@@ -113,7 +103,6 @@ func (lb *LoadBalancer) HealthyCount() int {
 	return count
 }
 
-// AllEndpoints returns all endpoints
 func (lb *LoadBalancer) AllEndpoints() []*Endpoint {
 	lb.mu.RLock()
 	defer lb.mu.RUnlock()

@@ -22,7 +22,6 @@ type RPCService struct {
 	cache   *cache.InMemoryCache
 }
 
-// NewRPCService creates a new RPC service
 func NewRPCService(manager *chain.Manager, cache *cache.InMemoryCache) *RPCService {
 	return &RPCService{
 		manager: manager,
@@ -30,17 +29,14 @@ func NewRPCService(manager *chain.Manager, cache *cache.InMemoryCache) *RPCServi
 	}
 }
 
-// Call performs a single JSON-RPC call
 func (s *RPCService) Call(ctx context.Context, req *rpcv1.RPCRequest) (*rpcv1.RPCResponse, error) {
 	start := time.Now()
 
-	// Get chain
 	ch, ok := s.manager.GetChain(req.Chain)
 	if !ok {
 		return nil, status.Errorf(codes.NotFound, "chain not found: %s", req.Chain)
 	}
 
-	// Build JSON-RPC request
 	rpcReq := map[string]interface{}{
 		"jsonrpc": req.Jsonrpc,
 		"method":  req.Method,
@@ -55,7 +51,6 @@ func (s *RPCService) Call(ctx context.Context, req *rpcv1.RPCRequest) (*rpcv1.RP
 		rpcReq["params"] = params
 	}
 
-	// Check cache
 	if s.cache.IsCacheable(req.Method) {
 		if cached, ok := s.cache.Get(req.Chain, req.Method, req.Params); ok {
 			log.Printf("[gRPC][%s] Cache hit for %s", req.Chain, req.Method)
@@ -63,7 +58,6 @@ func (s *RPCService) Call(ctx context.Context, req *rpcv1.RPCRequest) (*rpcv1.RP
 		}
 	}
 
-	// Forward to chain
 	body, err := json.Marshal(rpcReq)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to marshal request: %v", err)
@@ -75,7 +69,6 @@ func (s *RPCService) Call(ctx context.Context, req *rpcv1.RPCRequest) (*rpcv1.RP
 		return nil, status.Errorf(codes.Unavailable, "backend error: %v", err)
 	}
 
-	// Cache response
 	if s.cache.IsCacheable(req.Method) {
 		s.cache.Set(req.Chain, req.Method, req.Params, resp)
 	}
@@ -121,14 +114,12 @@ func (s *RPCService) parseResponse(data []byte, cached bool) (*rpcv1.RPCResponse
 	return resp, nil
 }
 
-// BatchCall performs multiple JSON-RPC calls
 func (s *RPCService) BatchCall(ctx context.Context, req *rpcv1.BatchRPCRequest) (*rpcv1.BatchRPCResponse, error) {
 	responses := make([]*rpcv1.RPCResponse, len(req.Requests))
 
 	for i, r := range req.Requests {
 		resp, err := s.Call(ctx, r)
 		if err != nil {
-			// Convert error to response
 			st, _ := status.FromError(err)
 			responses[i] = &rpcv1.RPCResponse{
 				Jsonrpc: "2.0",
@@ -146,7 +137,6 @@ func (s *RPCService) BatchCall(ctx context.Context, req *rpcv1.BatchRPCRequest) 
 	return &rpcv1.BatchRPCResponse{Responses: responses}, nil
 }
 
-// StreamCalls handles bidirectional streaming for subscriptions
 func (s *RPCService) StreamCalls(stream rpcv1.RPCService_StreamCallsServer) error {
 	for {
 		req, err := stream.Recv()

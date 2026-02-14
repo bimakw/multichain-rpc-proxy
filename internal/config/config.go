@@ -39,7 +39,6 @@ type TLSConfig struct {
 	ClientTLS ClientTLSConfig `yaml:"client_tls"`
 }
 
-// ClientTLSConfig holds TLS configuration for backend connections
 type ClientTLSConfig struct {
 	Enabled            bool   `yaml:"enabled"`
 	InsecureSkipVerify bool   `yaml:"insecure_skip_verify"`
@@ -120,7 +119,6 @@ func Load(path string) (*Config, error) {
 		return nil, err
 	}
 
-	// Set defaults
 	if cfg.Server.Port == 0 {
 		cfg.Server.Port = 8080
 	}
@@ -140,7 +138,6 @@ func Load(path string) (*Config, error) {
 		cfg.Cache.TTL = 60 * time.Second
 	}
 
-	// Set HTTP pool defaults for each chain
 	for _, chainCfg := range cfg.Chains {
 		if chainCfg.HTTPPool.MaxIdleConns == 0 {
 			chainCfg.HTTPPool.MaxIdleConns = 100
@@ -156,7 +153,6 @@ func Load(path string) (*Config, error) {
 	return &cfg, nil
 }
 
-// IsCacheableMethod checks if the RPC method can be cached
 func (c *CacheConfig) IsCacheableMethod(method string) bool {
 	for _, m := range c.CacheableMethods {
 		if m == method {

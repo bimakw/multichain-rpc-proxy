@@ -6,7 +6,6 @@ import (
 	"time"
 )
 
-// Circuit breaker states
 type State int
 
 const (
@@ -32,19 +31,13 @@ var (
 	ErrCircuitOpen = errors.New("circuit breaker is open")
 )
 
-// CircuitBreakerConfig holds circuit breaker configuration
 type CircuitBreakerConfig struct {
-	// FailureThreshold is the number of failures before opening the circuit
 	FailureThreshold int
-	// SuccessThreshold is the number of successes in half-open state to close the circuit
 	SuccessThreshold int
-	// Timeout is how long to wait before transitioning from open to half-open
 	Timeout time.Duration
-	// HalfOpenMaxRequests is the maximum number of requests allowed in half-open state
 	HalfOpenMaxRequests int
 }
 
-// DefaultCircuitBreakerConfig returns sensible defaults
 func DefaultCircuitBreakerConfig() CircuitBreakerConfig {
 	return CircuitBreakerConfig{
 		FailureThreshold:    5,
@@ -54,7 +47,6 @@ func DefaultCircuitBreakerConfig() CircuitBreakerConfig {
 	}
 }
 
-// CircuitBreaker implements the circuit breaker pattern
 type CircuitBreaker struct {
 	config CircuitBreakerConfig
 
@@ -66,7 +58,6 @@ type CircuitBreaker struct {
 	halfOpenRequests int
 }
 
-// NewCircuitBreaker creates a new circuit breaker
 func NewCircuitBreaker(config CircuitBreakerConfig) *CircuitBreaker {
 	return &CircuitBreaker{
 		config: config,
@@ -74,7 +65,6 @@ func NewCircuitBreaker(config CircuitBreakerConfig) *CircuitBreaker {
 	}
 }
 
-// State returns the current state of the circuit breaker
 func (cb *CircuitBreaker) State() State {
 	cb.mu.RLock()
 	defer cb.mu.RUnlock()
@@ -82,11 +72,9 @@ func (cb *CircuitBreaker) State() State {
 }
 
 // currentState returns the current state, transitioning if needed
-// Must be called with at least read lock held
 func (cb *CircuitBreaker) currentState() State {
 	switch cb.state {
 	case StateOpen:
-		// Check if timeout has passed
 		if time.Since(cb.lastFailureTime) > cb.config.Timeout {
 			return StateHalfOpen
 		}
@@ -96,7 +84,6 @@ func (cb *CircuitBreaker) currentState() State {
 	}
 }
 
-// Allow checks if a request should be allowed
 func (cb *CircuitBreaker) Allow() bool {
 	cb.mu.Lock()
 	defer cb.mu.Unlock()
@@ -119,7 +106,6 @@ func (cb *CircuitBreaker) Allow() bool {
 	}
 }
 
-// RecordSuccess records a successful request
 func (cb *CircuitBreaker) RecordSuccess() {
 	cb.mu.Lock()
 	defer cb.mu.Unlock()
@@ -135,7 +121,6 @@ func (cb *CircuitBreaker) RecordSuccess() {
 	}
 }
 
-// RecordFailure records a failed request
 func (cb *CircuitBreaker) RecordFailure() {
 	cb.mu.Lock()
 	defer cb.mu.Unlock()
@@ -167,14 +152,12 @@ func (cb *CircuitBreaker) reset() {
 	cb.halfOpenRequests = 0
 }
 
-// Reset manually resets the circuit breaker to closed state
 func (cb *CircuitBreaker) Reset() {
 	cb.mu.Lock()
 	defer cb.mu.Unlock()
 	cb.reset()
 }
 
-// Stats returns current circuit breaker statistics
 func (cb *CircuitBreaker) Stats() CircuitBreakerStats {
 	cb.mu.RLock()
 	defer cb.mu.RUnlock()
@@ -188,7 +171,6 @@ func (cb *CircuitBreaker) Stats() CircuitBreakerStats {
 	}
 }
 
-// CircuitBreakerStats holds circuit breaker statistics
 type CircuitBreakerStats struct {
 	State            string
 	Failures         int
@@ -197,7 +179,6 @@ type CircuitBreakerStats struct {
 	HalfOpenRequests int
 }
 
-// Execute runs a function with circuit breaker protection
 func (cb *CircuitBreaker) Execute(fn func() error) error {
 	if !cb.Allow() {
 		return ErrCircuitOpen

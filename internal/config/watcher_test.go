@@ -1,11 +1,3 @@
-/*
- * Copyright (c) 2025 Bima Kharisma Wicaksana
- * GitHub: https://github.com/bimakw
- *
- * Licensed under MIT License.
- * See LICENSE file for details.
- */
-
 package config
 
 import (

@@ -81,7 +81,6 @@ type RPCRequest struct {
 	Jsonrpc string `protobuf:"bytes,2,opt,name=jsonrpc,proto3" json:"jsonrpc,omitempty"`
 	// RPC method to call
 	Method string `protobuf:"bytes,3,opt,name=method,proto3" json:"method,omitempty"`
-	// Parameters as JSON bytes
 	Params []byte `protobuf:"bytes,4,opt,name=params,proto3" json:"params,omitempty"`
 	// Request ID
 	Id            int64 `protobuf:"varint,5,opt,name=id,proto3" json:"id,omitempty"`
@@ -159,11 +158,8 @@ type RPCResponse struct {
 	Jsonrpc string                 `protobuf:"bytes,1,opt,name=jsonrpc,proto3" json:"jsonrpc,omitempty"`
 	// Result as JSON bytes (mutually exclusive with error)
 	Result []byte `protobuf:"bytes,2,opt,name=result,proto3" json:"result,omitempty"`
-	// Error if request failed
 	Error *RPCError `protobuf:"bytes,3,opt,name=error,proto3" json:"error,omitempty"`
-	// Request ID echoed back
 	Id int64 `protobuf:"varint,4,opt,name=id,proto3" json:"id,omitempty"`
-	// Whether response was served from cache
 	Cached        bool `protobuf:"varint,5,opt,name=cached,proto3" json:"cached,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -382,7 +378,6 @@ func (x *BatchRPCResponse) GetResponses() []*RPCResponse {
 	return nil
 }
 
-// Health check messages
 type HealthCheckRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields

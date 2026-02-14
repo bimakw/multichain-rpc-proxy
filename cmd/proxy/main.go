@@ -28,7 +28,6 @@ func main() {
 	configPath := flag.String("config", "configs/config.yaml", "Path to config file")
 	flag.Parse()
 
-	// Load config
 	cfg, err := config.Load(*configPath)
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
@@ -37,7 +36,6 @@ func main() {
 	log.Printf("Starting multichain-rpc-proxy")
 	log.Printf("Loaded %d chains", len(cfg.Chains))
 
-	// Initialize TLS config for backend connections
 	var clientTLSConfig *tls.Config
 	if cfg.Server.TLS.ClientTLS.Enabled {
 		var err error
@@ -55,16 +53,12 @@ func main() {
 	})
 	manager.Start()
 
-	// Initialize cache
 	memCache := cache.NewInMemory(cfg.Cache)
 
-	// Initialize rate limiter
 	rateLimiter := proxy.NewRateLimiter(cfg.RateLimit)
 
-	// Initialize proxy handler
 	handler := proxy.NewHandler(manager, memCache)
 
-	// Create Fiber app
 	app := fiber.New(fiber.Config{
 		ReadTimeout:  cfg.Server.ReadTimeout,
 		WriteTimeout: cfg.Server.WriteTimeout,
@@ -81,12 +75,10 @@ func main() {
 		},
 	})
 
-	// Middleware
 	app.Use(proxy.RecoveryMiddleware())
 	app.Use(proxy.CORSMiddleware())
 	app.Use(compress.New())
 
-	// Routes
 	app.Get("/", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{
 			"name":    "multichain-rpc-proxy",
@@ -103,7 +95,6 @@ func main() {
 	rpc := app.Group("/:chain", rateLimiter.Middleware())
 	rpc.Post("/", handler.HandleRPC)
 
-	// Start metrics server if enabled
 	if cfg.Metrics.Enabled {
 		go func() {
 			metricsAddr := fmt.Sprintf(":%d", cfg.Metrics.Port)
@@ -118,7 +109,6 @@ func main() {
 		}()
 	}
 
-	// Start gRPC server if enabled
 	var grpcSrv *grpcserver.Server
 	if cfg.GRPC.Enabled {
 		var err error
@@ -132,7 +122,6 @@ func main() {
 		}
 	}
 
-	// Start server
 	go func() {
 		addr := fmt.Sprintf(":%d", cfg.Server.Port)
 
@@ -150,14 +139,12 @@ func main() {
 		}
 	}()
 
-	// Graceful shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
 	log.Println("Shutting down...")
 
-	// Stop accepting new requests
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -165,12 +152,10 @@ func main() {
 		log.Printf("Server shutdown error: %v", err)
 	}
 
-	// Stop gRPC server
 	if grpcSrv != nil {
 		grpcSrv.Stop()
 	}
 
-	// Stop chain manager
 	manager.Stop()
 
 	log.Println("Server stopped")

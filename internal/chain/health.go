@@ -12,7 +12,6 @@ import (
 	"github.com/bimakw/multichain-rpc-proxy/internal/config"
 )
 
-// HealthChecker monitors endpoint health
 type HealthChecker struct {
 	chain       *Chain
 	cfg         config.HealthCheckConfig
@@ -22,7 +21,6 @@ type HealthChecker struct {
 	maxBlockLag int64
 }
 
-// NewHealthChecker creates a new health checker
 func NewHealthChecker(chain *Chain, cfg config.HealthCheckConfig) *HealthChecker {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &HealthChecker{
@@ -34,13 +32,11 @@ func NewHealthChecker(chain *Chain, cfg config.HealthCheckConfig) *HealthChecker
 	}
 }
 
-// Start begins health checking
 func (h *HealthChecker) Start() {
 	h.wg.Add(1)
 	go h.run()
 }
 
-// Stop stops health checking
 func (h *HealthChecker) Stop() {
 	h.cancel()
 	h.wg.Wait()
@@ -49,7 +45,6 @@ func (h *HealthChecker) Stop() {
 func (h *HealthChecker) run() {
 	defer h.wg.Done()
 
-	// Initial check
 	h.checkAll()
 
 	ticker := time.NewTicker(h.cfg.Interval)
@@ -73,7 +68,6 @@ func (h *HealthChecker) checkAll() {
 		healthy  bool
 	}, len(h.chain.endpoints))
 
-	// Check all endpoints concurrently
 	for _, ep := range h.chain.endpoints {
 		wg.Add(1)
 		go func(ep *Endpoint) {
@@ -92,7 +86,6 @@ func (h *HealthChecker) checkAll() {
 		close(results)
 	}()
 
-	// Collect results and find max height
 	var maxHeight int64
 	heights := make(map[*Endpoint]int64)
 
@@ -103,7 +96,6 @@ func (h *HealthChecker) checkAll() {
 		}
 	}
 
-	// Update health based on block lag
 	for ep, height := range heights {
 		if height == 0 {
 			ep.SetHealthy(false)
@@ -144,7 +136,6 @@ func (h *HealthChecker) checkEndpoint(ep *Endpoint) (int64, bool) {
 		return 0, false
 	}
 
-	// Parse block number from hex
 	height, err := parseBlockNumber(resp.Result)
 	if err != nil {
 		log.Printf("[%s] Failed to parse block number from %s: %v", h.chain.Name, ep.URL, err)
@@ -156,25 +147,20 @@ func (h *HealthChecker) checkEndpoint(ep *Endpoint) (int64, bool) {
 
 // parseBlockNumber parses a hex block number from JSON-RPC response
 func parseBlockNumber(raw []byte) (int64, error) {
-	// Remove quotes from JSON string
 	hexStr := strings.Trim(string(raw), "\"")
 
-	// Remove 0x prefix
 	hexStr = strings.TrimPrefix(hexStr, "0x")
 
-	// Decode hex
 	if hexStr == "" {
 		return 0, nil
 	}
 
-	// Pad to even length
 	if len(hexStr)%2 != 0 {
 		hexStr = "0" + hexStr
 	}
 
 	bytes, err := hex.DecodeString(hexStr)
 	if err != nil {
-		// Try parsing as decimal
 		return strconv.ParseInt(string(raw), 10, 64)
 	}
 
